@@ -1,0 +1,1073 @@
+<!DOCTYPE html>  
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>テンプレ</title>
+<style>
+  html, body{height:100%; overflow:hidden;}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
+  header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #eee; position:sticky; top:0; z-index:400; background:#fff;}
+  h1{margin:0;font-size:18px;}
+  .small{font-size:12px;opacity:.75;}
+  .join-box{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:12px; position:relative; z-index:2;}
+  .join-box input{padding:8px;border:1px solid #ddd;border-radius:6px;font-size:16px;}
+  .btn{padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:#f8f8f8;cursor:pointer;}
+  .btn.primary{background:#111;color:#fff;border-color:#111;}
+  .btn.ghost{background:transparent;}
+  .hidden{display:none;}
+  #lobby{padding:20px;border-top:1px solid #eee; position:relative; z-index:2;}
+  .copy-btn.copied, .btn.ghost.copied{background:#16a34a;color:#fff;border-color:#16a34a;}
+
+  /* ★ main背景：入室前/入室後で切替 */
+  main{
+    position:relative;
+    height:calc(100vh - 60px);
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+  }
+  main.prejoin{ background-image:url('maemain.jpg'); }
+  main.joined{ background-image:url('maingazo.jpg'); }
+
+  /* ★ 着席ポップ */
+  .seat-pop{
+    position:fixed;left:50%;bottom:10px;transform:translateX(-50%);
+    background:orange;border:1px solid #eee;border-radius:12px;
+    box-shadow:0 12px 28px rgba(0,0,0,.12);
+    padding:10px;z-index:220;display:flex;flex-direction:column;gap:10px;min-width:280px;
+  }
+  .seat-pop.hidden{display:none;}
+  .seat-pop .row{display:flex;gap:8px;align-items:center;}
+  .seat-pop label{width:84px;font-size:13px;}
+  .seat-pop .tabs{display:flex;gap:6px;flex-wrap:wrap;}
+  .tab{padding:6px 10px;border:1px solid #ddd;border-radius:999px;cursor:pointer;user-select:none;position:relative;}
+  .tab.disabled{opacity:.45; pointer-events:none;}
+  .tab.disabled::after{content:'✕';position:absolute;inset:0;display:grid;place-items:center;font-size:18px;font-weight:700;color:#b91c1c;pointer-events:none;}
+  .tab.active{background:#111;color:#fff;border-color:#111;}
+
+  /* ★ ホスト人数選択中：参加者に出す黒ポップ（下固定） */
+  .host-selecting-pop{
+    position:fixed;left:50%;bottom:10px;transform:translateX(-50%);
+    background:rgba(20,20,20,.92);color:#fff;
+    padding:12px 16px;border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    z-index:225;font-weight:800;white-space:nowrap;
+    pointer-events:none;
+  }
+  .host-selecting-pop.hidden{display:none;}
+
+  /* ★ 追い出し確認ダイアログ */
+  .dialog-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.35);
+    display:flex;align-items:center;justify-content:center;z-index:300;
+  }
+  .dialog-backdrop.hidden{display:none;}
+  .dialog-box{
+    background:#fff;border-radius:12px;padding:16px 18px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    max-width:320px;width:calc(100% - 40px);
+  }
+  .dialog-box p{margin:0 0 12px;font-size:14px;line-height:1.6;}
+  .dialog-buttons{display:flex;justify-content:flex-end;gap:8px;}
+
+  /* ★ ホスト用 設定ボタン（右下固定） */
+  .host-settings-btn{
+    position:fixed;right:16px;bottom:16px;width:44px;height:44px;border-radius:50%;
+    border:1px solid #ddd;background:#fff;box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:none;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:230;
+  }
+  .host-settings-btn.visible{display:flex;}
+
+  /* ★ 設定ポップ（ホスト専用パネル） */
+  .start-pop{
+    position:fixed;right:16px;bottom:72px;background:#fff;border:1px solid #ddd;border-radius:12px;
+    box-shadow:0 12px 28px rgba(0,0,0,.16);padding:10px 12px;z-index:240;min-width:260px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .start-pop.hidden{display:none;}
+  .start-pop-header{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .start-pop-title{font-size:14px;font-weight:600;}
+  .start-pop-main{font-size:13px;line-height:1.5;}
+  .start-pop-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;flex-wrap:wrap;}
+
+  /* 詳細情報消す用 */
+  #roomInfoLobby, #lobby h2, #lobby p {display:none;}
+  #lobby.entered{
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    min-height:calc(100vh - 60px);
+  }
+
+  /* =========================
+     ★ 追加：左下「？」ボタン
+     ========================= */
+  .help-btn{
+    position:fixed;left:16px;bottom:16px;width:44px;height:44px;border-radius:50%;
+    border:1px solid #111;background:#111;color:#fff;
+    box-shadow:0 8px 20px rgba(0,0,0,.18);
+    display:none;align-items:center;justify-content:center;
+    font-size:22px;font-weight:800;cursor:pointer;z-index:230;
+  }
+  .help-btn.visible{display:flex;}
+
+  /* ★ 追加：ヘルプ一覧ポップ */
+  .help-pop-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.35);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:310;
+    padding:16px;
+  }
+  .help-pop-backdrop.hidden{display:none;}
+  .help-pop{
+    width:min(520px, calc(100% - 0px));
+    max-height:min(70vh, 640px);
+    background:#fff;border:1px solid #ddd;border-radius:16px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    overflow:hidden;
+  }
+  .help-pop-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 12px;border-bottom:1px solid #eee;
+  }
+  .help-pop-title{font-weight:800;font-size:14px;}
+  .help-pop-body{padding:12px;overflow:auto;max-height:calc(70vh - 48px);}
+  .role-row{
+    display:flex;gap:12px;align-items:flex-start;
+    padding:10px 0;
+  }
+  .role-card{
+    width:72px;height:108px;border-radius:10px;border:1px solid #ddd;background:#f8f8f8;
+    box-shadow:0 6px 16px rgba(0,0,0,.10);
+    flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:#444;
+  }
+  .role-desc{flex:1 1 auto;}
+  .role-desc .name{font-weight:900;margin-bottom:4px;}
+  .role-desc .text{font-size:13px;line-height:1.55;color:#222;white-space:pre-wrap;}
+
+  /* =========================
+     ★ ここから：今回の配布UI（縦並び）
+     ========================= */
+  :root{
+    --card-w: 60px;
+    --card-h: 90px;
+    --weapon-border: #3b575b;
+    --evidence-border: #925f48;
+  }
+
+  .players-list{
+    width:min(980px, calc(100% - 24px));
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .player-row{
+    width:100%;
+    background:rgba(255,255,255,.75);
+    border:1px solid #eee;
+    border-radius:14px;
+    box-shadow:0 10px 26px rgba(0,0,0,.08);
+    padding:10px;
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  .player-name{
+    font-weight:900;
+    font-size:13px;
+    margin-bottom:6px;
+  }
+
+  /* 左：正体カード */
+  .role-slot{
+    flex:0 0 auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    width:92px;
+  }
+  .role-card-big{
+    width:var(--card-w);
+    height:var(--card-h);
+    border-radius:10px;
+    border:2px solid #111;
+    box-shadow:0 6px 16px rgba(0,0,0,.18);
+    background:#fff;
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    font-weight:900;
+    user-select:none;
+  }
+  .role-card-big.back{
+    background:linear-gradient(135deg,#111,#444);
+    border-color:#111;
+    color:#fff;
+  }
+  .role-card-big .role-label{
+    position:absolute;
+    left:6px; top:6px;
+    background:rgba(255,255,255,.9);
+    color:#111;
+    border-radius:999px;
+    padding:2px 6px;
+    font-size:10px;
+    font-weight:900;
+  }
+  .role-card-big.back .role-label{
+    background:rgba(255,255,255,.18);
+    color:#fff;
+  }
+
+  /* 右：凶器/証拠品 2段 */
+  .cards-slot{
+    flex:1 1 auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-width:0;
+  }
+  .row-title{
+    font-size:12px;
+    font-weight:900;
+    opacity:.85;
+    margin-bottom:4px;
+  }
+  .cards-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  .card{
+    width:var(--card-w);
+    height:var(--card-h);
+    border-radius:10px;
+    border:2px solid #ddd;
+    background:#fff;
+    box-shadow:0 6px 16px rgba(0,0,0,.14);
+    position:relative;
+    overflow:hidden;
+    flex:0 0 auto;
+  }
+  .card.weapon{ border-color: var(--weapon-border); }
+  .card.evidence{ border-color: var(--evidence-border); }
+
+  .card .img{
+    position:absolute; inset:0;
+    background:#f3f4f6;
+    background-size:cover;
+    background-position:center;
+    filter:saturate(1.05) contrast(1.02);
+  }
+
+  /* 左上タグ（縁色で塗って白字） */
+  .card .tag{
+    position:absolute;
+    left:0; top:0;
+    padding:4px 6px;
+    border-bottom-right-radius:10px;
+    font-size:10px;
+    font-weight:900;
+    color:#fff;
+    max-width:calc(100% - 6px);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .card.weapon .tag{ background: var(--weapon-border); }
+  .card.evidence .tag{ background: var(--evidence-border); }
+
+  .note-small{
+    font-size:12px;
+    opacity:.75;
+    margin:10px 0 0;
+    text-align:center;
+  }
+  .row-title{ display:none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>テンプレ</h1>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <div class="small" id="roomInfo"></div>
+    <button class="btn ghost" id="copyLinkBtn">COPY</button>
+  </div>
+</header>
+
+<main id="main" class="prejoin">
+  <div class="join-box" id="joinBox">
+    <input id="userName" placeholder="名前（4文字以内）" maxlength="4" />
+    <input id="roomCode" placeholder="ルームコード（未入力で自動生成）" maxlength="12" />
+    <button class="btn primary" id="btnJoin">入室</button>
+  </div>
+
+  <div id="lobby" class="hidden">
+    <h2>ロビー</h2>
+    <div id="roomInfoLobby" style="margin-bottom:8px;"></div>
+    <p>ここにテーブルや情報が表示されます。</p>
+
+    <!-- ★ 円配置は廃止：縦並びリスト -->
+    <div id="playersList" class="players-list"></div>
+
+    <div class="note-small">
+      ※画像は「カード名→固定リンク（Google Drive uc?export=view）」から取得します。<br>
+      ※リンクが登録されていないカードは無地のまま表示します。
+    </div>
+  </div>
+</main>
+
+<!-- ★ 参加者：ホスト人数選択中ポップ -->
+<div id="hostSelectingPop" class="host-selecting-pop hidden">ホストが人数を選択中</div>
+
+<!-- 着席ポップ -->
+<div id="seatPop" class="seat-pop hidden">
+  <div class="row"><label>席を選択</label><div id="seatTabs" class="tabs"></div></div>
+  <div class="row" style="justify-content:flex-end">
+    <button class="btn small ghost" id="btnSeatCancel">観戦</button>
+  </div>
+</div>
+
+<!-- 既存プレイヤー追い出し確認ポップ -->
+<div id="kickDialog" class="dialog-backdrop hidden">
+  <div class="dialog-box" id="kickDialogBox">
+    <p id="kickMessage">既存のプレイヤーを追い出して、着席しますか？</p>
+    <div class="dialog-buttons">
+      <button class="btn ghost" id="btnKickNo">いいえ</button>
+      <button class="btn primary" id="btnKickYes">はい</button>
+    </div>
+  </div>
+</div>
+
+<!-- ホスト専用 設定ボタン（⚙） -->
+<button id="hostSettingsBtn" class="host-settings-btn" title="設定">⚙</button>
+
+<!-- ★ 追加：ヘルプボタン（？） -->
+<button id="helpBtn" class="help-btn" title="正体カード一覧">？</button>
+
+<!-- ★ 追加：ヘルプ一覧ポップ -->
+<div id="helpBackdrop" class="help-pop-backdrop hidden">
+  <div class="help-pop" role="dialog" aria-modal="true" aria-label="正体カード一覧">
+    <div class="help-pop-header">
+      <div class="help-pop-title">正体カード</div>
+      <button id="btnHelpClose" class="btn ghost" style="padding:2px 6px;font-size:12px;">×</button>
+    </div>
+    <div class="help-pop-body" id="helpBody"></div>
+  </div>
+</div>
+
+<!-- 設定ポップ（スタート＋リセット） -->
+<div id="startPop" class="start-pop hidden">
+  <div class="start-pop-header">
+    <div class="start-pop-title">ホスト設定</div>
+    <button id="btnStartPopClose" class="btn ghost" style="padding:2px 6px;font-size:12px;">×</button>
+  </div>
+  <div class="start-pop-main">
+    「スタート」で全プレイヤーに配布：<br>
+    ・正体カード（殺人犯/法医学者/捜査官）<br>
+    ・凶器4枚＋証拠品4枚（各プレイヤー分、重複なし）<br>
+    ※他人の正体は裏向き表示。凶器/証拠品は全て表向き。
+  </div>
+  <div class="start-pop-actions">
+    <button id="btnResetRoom" class="btn ghost">リセット</button>
+    <button id="btnGameStart" class="btn primary">スタート</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, set, get, update, onValue, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+// ▼ Firebase 設定
+const firebaseConfig = {
+  apiKey: "AIzaSyAMeKfMoHt9qOQ2VuUBpkrKuei7yGBbEi8",
+  authDomain: "cheesetheft-fd52f.firebaseapp.com",
+  databaseURL: "https://cheesetheft-fd52f-default-rtdb.firebaseio.com",
+  projectId: "cheesetheft-fd52f",
+  storageBucket: "cheesetheft-fd52f.firebasestorage.app",
+  messagingSenderId: "298688959395",
+  appId: "1:298688959395:web:6ac2c3eb214201f2020016",
+  measurementId: "G-HPDFTCLR8H"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ★ userId をタブ単位で固定（タブごとに別ID）
+const savedUserId = sessionStorage.getItem('bbUserId') || crypto.randomUUID();
+sessionStorage.setItem('bbUserId', savedUserId);
+
+// ▼ 状態
+const state = {
+  userId: savedUserId,
+  userName: null,
+  roomCode: null,
+  seatedTable: null,
+  isHost: false,
+  room: {},
+  tables: {},
+  deals: {},   // rooms/{room}/deals に入れる
+};
+
+const mainEl = document.getElementById('main');
+const joinBox = document.getElementById('joinBox');
+const inputName = document.getElementById('userName');
+const inputCode = document.getElementById('roomCode');
+const btnJoin = document.getElementById('btnJoin');
+const lobby = document.getElementById('lobby');
+const roomInfo = document.getElementById('roomInfo');
+const roomInfoLobby = document.getElementById('roomInfoLobby');
+const copyLinkBtn = document.getElementById('copyLinkBtn');
+
+const hostSelectingPop = document.getElementById('hostSelectingPop');
+
+const seatPop = document.getElementById('seatPop');
+const seatTabs = document.getElementById('seatTabs');
+const btnSeatCancel = document.getElementById('btnSeatCancel');
+const seatLabel = seatPop.querySelector('label');
+
+const playersList = document.getElementById('playersList');
+
+const kickDialog = document.getElementById('kickDialog');
+const kickMessage = document.getElementById('kickMessage');
+const btnKickYes = document.getElementById('btnKickYes');
+const btnKickNo = document.getElementById('btnKickNo');
+
+const hostSettingsBtn = document.getElementById('hostSettingsBtn');
+const startPop = document.getElementById('startPop');
+const btnStartPopClose = document.getElementById('btnStartPopClose');
+const btnGameStart = document.getElementById('btnGameStart');
+const btnResetRoom = document.getElementById('btnResetRoom');
+
+/* ★ 追加：ヘルプUI参照 */
+const helpBtn = document.getElementById('helpBtn');
+const helpBackdrop = document.getElementById('helpBackdrop');
+const btnHelpClose = document.getElementById('btnHelpClose');
+const helpBody = document.getElementById('helpBody');
+
+/* ★ 正体カード一覧（ヘルプ） */
+const ROLE_HELP = [
+  { name: "殺人犯", text: "あなたが犯人です。" },
+  { name: "法医学者", text: "あなたは法医学者です。" },
+  { name: "捜査官", text: "あなたは捜査官です。" },
+];
+
+function renderHelpList(){
+  helpBody.innerHTML = '';
+  ROLE_HELP.forEach((r) => {
+    const row = document.createElement('div');
+    row.className = 'role-row';
+
+    const card = document.createElement('div');
+    card.className = 'role-card';
+    card.textContent = r.name;
+
+    const desc = document.createElement('div');
+    desc.className = 'role-desc';
+    desc.innerHTML = `
+      <div class="name">${r.name}</div>
+      <div class="text">${r.text}</div>
+    `;
+
+    row.appendChild(card);
+    row.appendChild(desc);
+    helpBody.appendChild(row);
+  });
+}
+function openHelp(){
+  renderHelpList();
+  helpBackdrop.classList.remove('hidden');
+}
+function closeHelp(){
+  helpBackdrop.classList.add('hidden');
+}
+helpBtn.addEventListener('click', () => {
+  // 入室後だけ
+  if (joinBox.classList.contains('hidden')) openHelp();
+});
+btnHelpClose.addEventListener('click', closeHelp);
+helpBackdrop.addEventListener('click', (e) => {
+  if (e.target === helpBackdrop) closeHelp();
+});
+
+/* ==============
+   今回のカードデータ
+   ============== */
+const WEAPONS = [
+  "液体薬品","鉢植え","仕事","ヘッドフォン","密室","バリアロープ","こて","石膏像","レンガ","スカーフ",
+  "汚れた手","ビニール袋","なた","ダガー","踏みつけ","ワイン","マッチ","狂犬","注射","針金","ノド切り",
+  "ムチ","素手","農薬","違法ドラッグ","線路","レーザーシャーク","竹やり","血液サンプル","スカーフ",
+  "過剰摂取","四肢切断","毒さそり","ウイルス","放火","噛みつき","ガムテープ","釣り針","灯油","トロフィー",
+  "ハンマー","折りたたみいす","機械"
+];
+
+const EVIDENCES = [
+  "ヘルメット","ＩＤカード","注射器","制服","ノート","ハイヒール","トランプ","ピーナッツ","ジュース","ファン",
+  "動画サイト","調味料","インク","蒸しパン","懐中電灯","サングラス","リモコン","社員証","麻雀牌","光ファイバー",
+  "インターネットケーブル","エアコン","サイン","ネックレス","文書","懐中時計","携帯電話","カップ","ダイアモンド",
+  "アンティーク","メニュー","地図","血","羽根ペン","野菜","針と糸","ベル","スイッチ","密書","借用証書","ランプ"
+];
+
+const ROLES = {
+  MURDERER: "殺人犯",
+  FORENSIC: "法医学者",
+  INVESTIGATOR: "捜査官"
+};
+
+/* =========================
+   ★ 画像取得方法：固定リンク（Google Drive uc?export=view&id=...）
+   - タイトル文字列 → URL を引く
+   - 見つからない場合は null（無地）
+   ========================= */
+const TITLE_IMAGE_URLS = new Map([
+  ["マッチ", "https://drive.google.com/uc?export=view&id=1QRsBIdKg_-pqV44uHn_Pe82dRqGduL8w"],
+  ["鏡", "https://drive.google.com/uc?export=view&id=15F7Oyl-p1cZ4B3XN5avivT9jLsBzKbTY"],
+  ["日記", "https://drive.google.com/uc?export=view&id=1GHXgS45woqy35mFpbG7-37LRCCoHV4LZ"],
+  ["注射器", "https://drive.google.com/uc?export=view&id=1pkE93_-aWUpgvAcguQYHMIatULiRMNNw"],
+  ["グラフィティ", "https://drive.google.com/uc?export=view&id=1QHJ1lWUOnPIJJyKH5PFDMZpa80fy8Lyg"],
+
+  ["トランプ", "https://drive.google.com/uc?export=view&id=1fIC0iey5u1XAa2X9L5dNEh5fDu7r0QpD"],
+  ["弁当箱", "https://drive.google.com/uc?export=view&id=1veRyaLaNjy6ZzgA5QsLyRIIr54r-sGv-"],
+  ["腕時計", "https://drive.google.com/uc?export=view&id=1gNaMQ-IGFuRzOYmVaKOWzvEWeO1scU1C"],
+  ["輸血パック", "https://drive.google.com/uc?export=view&id=1IXvAxemmpXibsJuRYvzrsD_k-xKih9h4"],
+  ["スポンジ", "https://drive.google.com/uc?export=view&id=1-K9o5DcAFsAoNdDVHk1NnpQtlZBFrGU_"],
+  ["針と糸", "https://drive.google.com/uc?export=view&id=12YAFtseWLx2SqRpeQEhwRt3rl5f7itkl"],
+  ["タバコの灰", "https://drive.google.com/uc?export=view&id=14pfbhaIAxuJmpoKSEFAAj3vQNunoQ0NL"],
+  ["手袋", "https://drive.google.com/uc?export=view&id=1LuxZ-hwetiOjAIjpgwm3BRA-KC3ljYJg"],
+  ["錠前", "https://drive.google.com/uc?export=view&id=15_IEEsWAuTqmGC9-1Sk0Y8YV8i-sTAlb"],
+
+  ["氷", "https://drive.google.com/uc?export=view&id=1hPPKbvjfympRJXVfpkPo2NT0fRedxyVU"],
+  ["革の鞄", "https://drive.google.com/uc?export=view&id=1mUwWJz2d3XaboVh_kCBaD6vXi7MkvMow"],
+  ["弾丸", "https://drive.google.com/uc?export=view&id=1ideOLFWh_WpQMriL44ACqJqxVdWrCp0S"],
+  ["蒸しパン", "https://drive.google.com/uc?export=view&id=1EkXIAc51PauiokurjdJKt8Ka1UeZeRes"],
+]);
+
+const imageCache = new Map();
+/* 画像URL（固定リンク）を返す。無ければnull */
+async function fetchImageUrlByTitle(title){
+  if (imageCache.has(title)) return imageCache.get(title);
+  const url = TITLE_IMAGE_URLS.get(title) || null;
+  imageCache.set(title, url);
+  return url;
+}
+
+function generateRoomCode(length = 6){
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for(let i=0;i<length;i++) code += chars.charAt(Math.floor(Math.random()*chars.length));
+  return code;
+}
+
+async function restoreSeatFromDB(){
+  if (!state.roomCode) return;
+  const tablesRef = ref(db, `rooms/${state.roomCode}/tables`);
+  const snap = await get(tablesRef);
+  const data = snap.val() || {};
+  let mySeatIndex = null;
+
+  for (const [seatIndex, t] of Object.entries(data)) {
+    if (t && t.playerId === state.userId) {
+      mySeatIndex = Number(seatIndex);
+      break;
+    }
+  }
+  if (mySeatIndex !== null) state.seatedTable = mySeatIndex;
+}
+
+function refreshRoomLabels(){
+  if (!state.roomCode || !state.userName) return;
+  const label = state.isHost ? '（ホスト）' : '';
+  const infoText = ` ${state.roomCode},  ${state.userName}${label}`;
+  roomInfo.textContent = infoText;
+  roomInfoLobby.textContent = infoText;
+}
+function updateHostUI(){
+  refreshRoomLabels();
+  if (state.isHost){
+    hostSettingsBtn.classList.add('visible');
+  } else {
+    hostSettingsBtn.classList.remove('visible');
+    startPop.classList.add('hidden');
+  }
+  helpBtn.classList.add('visible');
+}
+
+function subscribeRoom(){
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+  onValue(roomRef, snap => {
+    state.room = snap.val() || {};
+    const waiting = (!state.isHost && !state.room.maxPlayers);
+    hostSelectingPop.classList.toggle('hidden', !waiting);
+    syncSeatUI();
+  });
+}
+function subscribeHostState(){
+  const hostRef = ref(db, `rooms/${state.roomCode}/hostId`);
+  onValue(hostRef, snap => {
+    const hostId = snap.val();
+    state.isHost = (hostId === state.userId);
+    updateHostUI();
+    syncSeatUI();
+  });
+}
+function subscribeTables(){
+  const tablesRef = ref(db, `rooms/${state.roomCode}/tables`);
+  onValue(tablesRef, snap => {
+    state.tables = snap.val() || {};
+    renderPlayersList(); // 席情報が変わるたびに表示更新
+  });
+}
+function subscribeDeals(){
+  const dealsRef = ref(db, `rooms/${state.roomCode}/deals`);
+  onValue(dealsRef, snap => {
+    state.deals = snap.val() || {};
+    renderPlayersList();
+  });
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const roomFromUrl = urlParams.get('room');
+if(roomFromUrl) inputCode.value = roomFromUrl;
+
+btnJoin.addEventListener('click', async () => {
+  state.userName = inputName.value || '名無し';
+  state.roomCode = inputCode.value.trim() || generateRoomCode();
+
+  await set(ref(db, `rooms/${state.roomCode}/users/${state.userId}`), {
+    name: state.userName,
+    joinedAt: Date.now()
+  });
+
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+  const roomSnap = await get(roomRef);
+  const roomData = roomSnap.val();
+
+  if(!roomData || !roomData.hostId){
+    await update(roomRef, { hostId: state.userId });
+    state.isHost = true;
+  } else {
+    state.isHost = (roomData.hostId === state.userId);
+  }
+
+  updateHostUI();
+
+  mainEl.classList.remove('prejoin');
+  mainEl.classList.add('joined');
+
+  joinBox.classList.add('hidden');
+  lobby.classList.remove('hidden');
+  lobby.classList.add('entered');
+
+  await restoreSeatFromDB();
+
+  subscribeRoom();
+  subscribeHostState();
+  subscribeTables();
+  subscribePlayers(); // 既存：着席UI用
+  subscribeDeals();
+
+  syncSeatUI();
+});
+
+copyLinkBtn.addEventListener('click', async () => {
+  const url = `${location.origin}${location.pathname}?room=${state.roomCode}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    copyLinkBtn.classList.add('copied');
+    copyLinkBtn.textContent = 'COPIED';
+    inputCode.value = state.roomCode;
+    setTimeout(()=>{
+      copyLinkBtn.classList.remove('copied');
+      copyLinkBtn.textContent='COPY';
+    },1500);
+  } catch {
+    prompt('コピーできません。手動でコピーしてください', url);
+  }
+});
+
+let pendingSeatIndexToSteal = null;
+let pendingSeatPlayerIdToSteal = null;
+let isRenderingSeatTabs = false;
+let latestPlayers = [];
+
+async function syncSeatUI(){
+  if (!state.roomCode) return;
+
+  const maxPlayers = state.room.maxPlayers || null;
+
+  if (!state.isHost && !maxPlayers){
+    seatPop.classList.add('hidden');
+    return;
+  }
+  if (state.seatedTable !== null){
+    seatPop.classList.add('hidden');
+    return;
+  }
+  await renderSeatTabs();
+  seatPop.classList.remove('hidden');
+}
+
+async function renderSeatTabs(){
+  if (!state.roomCode) return;
+  if (isRenderingSeatTabs) return;
+  isRenderingSeatTabs = true;
+
+  try {
+    seatTabs.innerHTML = '';
+
+    const roomRef = ref(db, `rooms/${state.roomCode}`);
+    const roomSnap = await get(roomRef);
+    const roomData = roomSnap.val() || {};
+    const maxPlayers = roomData.maxPlayers || null;
+
+    if(state.isHost && !maxPlayers){
+      seatLabel.textContent = '人数を選択';
+      for(let i=2; i<=8; i++){
+        const tab = document.createElement('div');
+        tab.className = 'tab';
+        tab.textContent = i;
+
+        tab.onclick = async () => {
+          await update(roomRef, { maxPlayers: i });
+          const tRef = ref(db, `rooms/${state.roomCode}/tables/1`);
+          await set(tRef, { playerId: state.userId, playerName: state.userName });
+
+          state.seatedTable = 1;
+          seatPop.classList.add('hidden');
+        };
+        seatTabs.appendChild(tab);
+      }
+      return;
+    }
+
+    seatLabel.textContent = '席を選択';
+
+    const effectiveMax = maxPlayers || 8;
+    const tablesSnap = await get(ref(db, `rooms/${state.roomCode}/tables`));
+    const tables = tablesSnap.val() || {};
+
+    for(let i=1; i<=effectiveMax; i++){
+      const tab = document.createElement('div');
+      tab.className = 'tab';
+      tab.textContent = i;
+
+      const t = tables[i];
+      if(t && t.playerId) tab.classList.add('disabled');
+
+      tab.onclick = async () => {
+        if(tab.classList.contains('disabled')) return;
+        const tRef = ref(db, `rooms/${state.roomCode}/tables/${i}`);
+        await set(tRef, { playerId: state.userId, playerName: state.userName });
+        state.seatedTable = i;
+        seatPop.classList.add('hidden');
+      };
+      seatTabs.appendChild(tab);
+    }
+  } finally {
+    isRenderingSeatTabs = false;
+  }
+}
+
+btnSeatCancel.onclick = () => {
+  seatPop.classList.add('hidden');
+  state.seatedTable = null;
+};
+
+function subscribePlayers(){
+  const tablesRef = ref(db, `rooms/${state.roomCode}/tables`);
+  onValue(tablesRef, async snap => {
+    const data = snap.val() || {};
+    const players = Object.entries(data)
+      .map(([seatIndex, t]) => (t && t.playerId ? {
+        id: t.playerId,
+        name: t.playerName || '名無し',
+        seatIndex: Number(seatIndex)
+      } : null))
+      .filter(Boolean)
+      .sort((a,b) => a.seatIndex - b.seatIndex);
+
+    latestPlayers = players;
+
+    const mySeat = players.find(p => p.id === state.userId);
+    if (mySeat && state.seatedTable === null) {
+      state.seatedTable = mySeat.seatIndex;
+      seatPop.classList.add('hidden');
+    }
+
+    const meStillSeated = players.some(p => p.id === state.userId);
+    if (!meStillSeated && state.seatedTable !== null) {
+      state.seatedTable = null;
+    }
+
+    await syncSeatUI();
+    renderPlayersList();
+  });
+}
+
+/* =========================
+   ★ 配布ロジック
+   ========================= */
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function pickManyUnique(pool, count){
+  const s = shuffle(pool);
+  return s.slice(0, count);
+}
+function chunk(arr, size){
+  const out = [];
+  for(let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size));
+  return out;
+}
+
+async function dealCaseFiles(){
+  if (!state.roomCode) return;
+
+  // 参加しているプレイヤー一覧（席順）
+  const tablesSnap = await get(ref(db, `rooms/${state.roomCode}/tables`));
+  const tables = tablesSnap.val() || {};
+  const players = Object.entries(tables)
+    .map(([seatIndex, t]) => (t && t.playerId ? {
+      id: t.playerId,
+      name: t.playerName || '名無し',
+      seatIndex: Number(seatIndex)
+    } : null))
+    .filter(Boolean)
+    .sort((a,b) => a.seatIndex - b.seatIndex);
+
+  if (!players.length) return;
+
+  // 各プレイヤーに「凶器4枚」「証拠品4枚」を重複なしで配る
+  const need = players.length * 4;
+
+  const weaponsAll = pickManyUnique(WEAPONS, Math.min(need, WEAPONS.length));
+  const evidencesAll = pickManyUnique(EVIDENCES, Math.min(need, EVIDENCES.length));
+
+  const weaponsChunks = chunk(weaponsAll, 4);
+  const evidencesChunks = chunk(evidencesAll, 4);
+
+  // 正体：殺人犯1・法医学者1・残り捜査官
+  const roleBag = [ROLES.MURDERER, ROLES.FORENSIC, ...Array(Math.max(0, players.length-2)).fill(ROLES.INVESTIGATOR)];
+  const rolesShuffled = shuffle(roleBag);
+
+  const deals = {};
+  players.forEach((p, idx) => {
+    deals[p.id] = {
+      role: rolesShuffled[idx] || ROLES.INVESTIGATOR,
+      weapons: (weaponsChunks[idx] && weaponsChunks[idx].length===4) ? weaponsChunks[idx] : pickManyUnique(WEAPONS, 4),
+      evidences: (evidencesChunks[idx] && evidencesChunks[idx].length===4) ? evidencesChunks[idx] : pickManyUnique(EVIDENCES, 4),
+    };
+  });
+
+  await set(ref(db, `rooms/${state.roomCode}/deals`), deals);
+}
+
+/* =========================
+   ★ 描画（縦並び）
+   ========================= */
+function getPlayersFromLatest(){
+  return (latestPlayers || []).slice().sort((a,b)=>a.seatIndex-b.seatIndex);
+}
+
+async function renderCardInto(elCard, kind, name){
+  elCard.classList.add('card', kind);
+  const img = document.createElement('div');
+  img.className = 'img';
+  const tag = document.createElement('div');
+  tag.className = 'tag';
+  tag.textContent = name;
+
+  elCard.appendChild(img);
+  elCard.appendChild(tag);
+
+  // ★ 画像（固定リンク）
+  const url = await fetchImageUrlByTitle(name);
+  if (url){
+    img.style.backgroundImage = `url('${url}')`;
+  } else {
+    img.style.backgroundImage = '';
+  }
+}
+
+function makeRoleCard(roleText, isBack){
+  const role = document.createElement('div');
+  role.className = 'role-card-big' + (isBack ? ' back' : '');
+  const label = document.createElement('div');
+  label.className = 'role-label';
+  label.textContent = '正体';
+  role.appendChild(label);
+
+  const center = document.createElement('div');
+  center.textContent = isBack ? '？？？' : roleText;
+  role.appendChild(center);
+  return role;
+}
+
+async function renderPlayersList(){
+  const players = getPlayersFromLatest();
+  playersList.innerHTML = '';
+
+  players.forEach(async (p) => {
+    const row = document.createElement('div');
+    row.className = 'player-row';
+
+    // 左：正体カード
+    const left = document.createElement('div');
+    left.className = 'role-slot';
+
+    const name = document.createElement('div');
+    name.className = 'player-name';
+    name.textContent = p.name;
+    left.appendChild(name);
+
+    const deal = state.deals[p.id];
+    const myId = state.userId;
+    const showRoleFront = (p.id === myId);
+    const roleText = deal?.role || '';
+    left.appendChild(makeRoleCard(roleText, !showRoleFront));
+
+    // 右：凶器/証拠品
+    const right = document.createElement('div');
+    right.className = 'cards-slot';
+
+    const wBox = document.createElement('div');
+    const wTitle = document.createElement('div');
+    wTitle.className = 'row-title';
+    wTitle.textContent = '凶器';
+    const wRow = document.createElement('div');
+    wRow.className = 'cards-row';
+    wBox.appendChild(wTitle);
+    wBox.appendChild(wRow);
+
+    const eBox = document.createElement('div');
+    const eTitle = document.createElement('div');
+    eTitle.className = 'row-title';
+    eTitle.textContent = '証拠品';
+    const eRow = document.createElement('div');
+    eRow.className = 'cards-row';
+    eBox.appendChild(eTitle);
+    eBox.appendChild(eRow);
+
+    right.appendChild(wBox);
+    right.appendChild(eBox);
+
+    row.appendChild(left);
+    row.appendChild(right);
+    playersList.appendChild(row);
+
+    // カード描画
+    const weapons = deal?.weapons || [];
+    const evidences = deal?.evidences || [];
+
+    // 凶器4枚横並び
+    for (const nm of weapons){
+      const c = document.createElement('div');
+      await renderCardInto(c, 'weapon', nm);
+      wRow.appendChild(c);
+    }
+
+    // 証拠品4枚横並び
+    for (const nm of evidences){
+      const c = document.createElement('div');
+      await renderCardInto(c, 'evidence', nm);
+      eRow.appendChild(c);
+    }
+  });
+}
+
+/* =========================
+   追い出し（既存のまま）
+   ========================= */
+kickDialog.addEventListener('click', (e) => {
+  if (e.target === kickDialog) {
+    kickDialog.classList.add('hidden');
+    pendingSeatIndexToSteal = null;
+    pendingSeatPlayerIdToSteal = null;
+  }
+});
+btnKickNo.addEventListener('click', (e) => {
+  e.stopPropagation();
+  kickDialog.classList.add('hidden');
+  pendingSeatIndexToSteal = null;
+  pendingSeatPlayerIdToSteal = null;
+});
+btnKickYes.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (pendingSeatIndexToSteal == null || !state.roomCode) {
+    kickDialog.classList.add('hidden');
+    return;
+  }
+
+  const seatIndex = pendingSeatIndexToSteal;
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+  const roomSnap = await get(roomRef);
+  const roomData = roomSnap.val() || {};
+
+  const tRef = ref(db, `rooms/${state.roomCode}/tables/${seatIndex}`);
+  await set(tRef, { playerId: state.userId, playerName: state.userName || '名無し' });
+
+  if (roomData.hostId && pendingSeatPlayerIdToSteal && roomData.hostId === pendingSeatPlayerIdToSteal) {
+    await update(roomRef, { hostId: state.userId });
+  }
+
+  state.seatedTable = seatIndex;
+
+  kickDialog.classList.add('hidden');
+  pendingSeatIndexToSteal = null;
+  pendingSeatPlayerIdToSteal = null;
+
+  seatPop.classList.add('hidden');
+});
+
+/* =========================
+   ホストUI
+   ========================= */
+hostSettingsBtn.addEventListener('click', () => {
+  if (!state.isHost) return;
+  startPop.classList.toggle('hidden');
+});
+btnStartPopClose.addEventListener('click', () => {
+  startPop.classList.add('hidden');
+});
+
+btnGameStart.addEventListener('click', async () => {
+  if (!state.isHost) return;
+  await dealCaseFiles();
+  startPop.classList.add('hidden');
+});
+
+btnResetRoom.addEventListener('click', async () => {
+  if (!state.isHost || !state.roomCode) return;
+
+  const base = `rooms/${state.roomCode}`;
+  await Promise.all([
+    remove(ref(db, `${base}/maxPlayers`)),
+    remove(ref(db, `${base}/tables`)),
+    remove(ref(db, `${base}/deals`)),
+  ]);
+
+  state.seatedTable = null;
+  startPop.classList.add('hidden');
+  await syncSeatUI();
+});
+</script>
+
+</body>
+</html>
