@@ -24,7 +24,7 @@
     position:relative;
     height:calc(100vh - 60px);
     overflow:auto;
-    overflow-x:hidden; /* ★ 横スクロール防止 */
+    overflow-x:hidden; /* 横スクロール防止 */
     -webkit-overflow-scrolling:touch;
     background-size:cover;
     background-position:center;
@@ -34,11 +34,11 @@
   main.joined{ background-image:url('decemain.jpg'); }
 
   /* =========================
-     ★ 右上：四角いビュー切替ボタン（header外）
+     右上：四角いビュー切替ボタン（header外）
      ========================= */
   .view-toggle-btn{
     position:fixed;
-    top:72px;          /* headerの下にくる */
+    top:72px;
     right:14px;
     width:44px;
     height:44px;
@@ -55,11 +55,7 @@
   }
   .view-toggle-btn:hover{ background:#fff; }
   .view-toggle-btn:active{ transform:translateY(1px); }
-  .view-toggle-btn .icon{
-    width:22px;height:22px;
-    position:relative;
-  }
-  /* “ZOOM/WORD っぽい”＝9ドットのグリッド模様 */
+  .view-toggle-btn .icon{ width:22px;height:22px; position:relative; }
   .view-toggle-btn .icon::before{
     content:"";
     position:absolute; inset:0;
@@ -68,7 +64,6 @@
     opacity:.9;
     border-radius:6px;
   }
-  /* 2列モード時にちょい強調 */
   body.two-col .view-toggle-btn{
     border-color:rgba(0,0,0,.28);
     box-shadow:0 12px 28px rgba(0,0,0,.22);
@@ -90,7 +85,6 @@
   .tab.disabled::after{content:'✕';position:absolute;inset:0;display:grid;place-items:center;font-size:18px;font-weight:700;color:#b91c1c;pointer-events:none;}
   .tab.active{background:#111;color:#fff;border-color:#111;}
 
-  /* 参加者：ホスト人数選択中ポップ */
   .host-selecting-pop{
     position:fixed;left:50%;bottom:10px;transform:translateX(-50%);
     background:rgba(20,20,20,.92);color:#fff;
@@ -101,7 +95,6 @@
   }
   .host-selecting-pop.hidden{display:none;}
 
-  /* 追い出し確認ダイアログ（そのまま残す） */
   .dialog-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.35);
     display:flex;align-items:center;justify-content:center;z-index:300;
@@ -115,7 +108,6 @@
   .dialog-box p{margin:0 0 12px;font-size:14px;line-height:1.6;}
   .dialog-buttons{display:flex;justify-content:flex-end;gap:8px;}
 
-  /* ホスト用 設定ボタン */
   .host-settings-btn{
     position:fixed;right:16px;bottom:16px;width:44px;height:44px;border-radius:50%;
     border:1px solid #ddd;background:#fff;box-shadow:0 8px 20px rgba(0,0,0,.18);
@@ -123,7 +115,6 @@
   }
   .host-settings-btn.visible{display:flex;}
 
-  /* 設定ポップ */
   .start-pop{
     position:fixed;right:16px;bottom:72px;background:#fff;border:1px solid #ddd;border-radius:12px;
     box-shadow:0 12px 28px rgba(0,0,0,.16);padding:10px 12px;z-index:240;min-width:260px;
@@ -135,7 +126,6 @@
   .start-pop-main{font-size:13px;line-height:1.5;}
   .start-pop-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;flex-wrap:wrap;}
 
-  /* ロビー見出しなど消す（必要なら残す） */
   #roomInfoLobby, #lobby h2, #lobby p {display:none;}
   #lobby.entered{
     display:flex;
@@ -144,7 +134,7 @@
   }
 
   /* =========================
-     ★ 新UI：プレイヤー縦並び
+     プレイヤー縦並び（＋2列）
      ========================= */
   .players-column{
     width:min(980px, calc(100% - 0px));
@@ -153,12 +143,8 @@
     flex-direction:column;
     gap:10px;
 
-    /* ★ 縮小スケール（2列時に下げる） */
+    /* ★ JSで自動計算して入れる（1列は 1） */
     --uiScale: 1;
-  }
-  body.two-col .players-column{
-    /* 2列時：同じ比率で縮小 */
-    --uiScale: .82;
   }
 
   /* 2列モード：テーブルを2列グリッドに */
@@ -170,19 +156,19 @@
   }
 
   .player-block{
-    background: rgba(25,25,25,.90);   /* 濃いグレー透明 */
+    background: rgba(25,25,25,.90);
     border: 1px solid rgba(255,255,255,.12);
     border-radius: calc(14px * var(--uiScale));
     box-shadow:0 10px 24px rgba(0,0,0,.20);
     padding: calc(5px * var(--uiScale));
-    position:relative; /* ★ 右上ネームタグ用 */
+    position:relative;
     min-width:0;
   }
 
-  /* ★ 2列モード時：正体カードは非表示 */
+  /* 2列モード：正体カードは非表示 */
   body.two-col .role-wrap{ display:none; }
 
-  /* ★ 2列モード時：テーブル右上内にネームタグ */
+  /* 2列モード：テーブル右上内にネームタグ */
   .player-badge{
     position:absolute;
     top: calc(6px * var(--uiScale));
@@ -197,7 +183,7 @@
     color:#111;
     border:1px solid rgba(255,255,255,.25);
     box-shadow:0 6px 14px rgba(0,0,0,.22);
-    display:none; /* 通常は出さない */
+    display:none;
     max-width: 70%;
     white-space:nowrap;
     overflow:hidden;
@@ -206,19 +192,14 @@
   body.two-col .player-badge{ display:block; }
   body.two-col .player-badge.me{ background:#111; color:#fff; border-color:#111; }
 
-  /* 配札エリア：左に正体カード、右に2段（凶器/証拠品） */
   .deal-area{
     display:flex;
     gap: calc(10px * var(--uiScale));
-    align-items:center; /* 上下中央に寄せる */
+    align-items:center;
     min-width:0;
   }
-  body.two-col .deal-area{
-    align-items:flex-start;
-    gap: calc(8px * var(--uiScale));
-  }
 
-  /* ★ ネームタグ：正体カードのすぐ上（フォント10） */
+  /* 正体カード */
   .role-wrap{
     display:flex;
     flex-direction:column;
@@ -237,13 +218,8 @@
     border:1px solid #e5e7eb;
     color:#111;
   }
-  .role-name-tag.me{
-    background:#111;
-    color:#fff;
-    border-color:#111;
-  }
+  .role-name-tag.me{ background:#111;color:#fff;border-color:#111; }
 
-  /* 正体カード（60x90） */
   .role-slot{
     width: calc(60px * var(--uiScale));
     height: calc(90px * var(--uiScale));
@@ -254,19 +230,8 @@
     position:relative;
     overflow:hidden;
   }
-  .role-slot.back{
-    background:linear-gradient(135deg,#111,#333);
-    border-color:#111;
-  }
-  .role-slot img{
-    position:absolute; inset:0;
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
-    background:#fff;
-  }
-  /* ★ 正体カードのカード名：右下（「正体」タグは不要） */
+  .role-slot.back{ background:linear-gradient(135deg,#111,#333); border-color:#111; }
+  .role-slot img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; background:#fff; }
   .role-cardname{
     position:absolute;
     right: calc(4px * var(--uiScale));
@@ -292,27 +257,24 @@
     flex:1 1 auto;
     min-width:0;
   }
+
   .row4{
     display:flex;
     gap: calc(8px * var(--uiScale));
     flex-wrap:nowrap;
-    overflow:auto;
+    overflow:auto;          /* 1列モードでは横スクロールOK */
     padding-bottom:2px;
     min-width:0;
   }
-  /* ★ 2列モード時：横スクロールしない（カードを縮小＆折り返し） */
+
+  /* ★ 2列モード：折り返しなし + 横スクロールなし（必ず縮小で収める） */
   body.two-col .row4{
-    overflow:hidden;
-    flex-wrap:wrap;
-    gap: calc(6px * var(--uiScale));
-    padding-top: calc(12px * var(--uiScale)); /* 右上ネームタグと被りにくく */
+    overflow:hidden;        /* 横スクロール禁止 */
+    flex-wrap:nowrap;       /* 折り返し禁止 */
+    padding-top: calc(14px * var(--uiScale)); /* 右上ネームタグと干渉しにくく */
   }
 
-  /* =========================
-     ★ カード（60x90）
-     凶器：#3b575b
-     証拠品：#925f48
-     ========================= */
+  /* カード */
   .card{
     width: calc(60px * var(--uiScale));
     height: calc(90px * var(--uiScale));
@@ -325,17 +287,8 @@
   }
   .card.weapon{ border: calc(3px * var(--uiScale)) solid #3b575b; }
   .card.evidence{ border: calc(3px * var(--uiScale)) solid #925f48; }
+  .card img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; background:#fff; }
 
-  .card img{
-    position:absolute; inset:0;
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
-    background:#fff;
-  }
-
-  /* ★ カード左上の名前タグ：手動改行 + 自動フィット */
   .name-tag{
     position:absolute;
     left: calc(4px * var(--uiScale));
@@ -343,19 +296,17 @@
     padding: calc(6px * var(--uiScale)) calc(3px * var(--uiScale));
     border-radius: calc(7px * var(--uiScale));
     font-weight:900;
-    font-size: calc(12px * var(--uiScale)); /* ←基準（JSで下げる） */
+    font-size: calc(12px * var(--uiScale));
     line-height:1.15;
     color:#fff;
-
     box-sizing:border-box;
-    max-width:calc(100% - 8px); /* ←必ず枠内 */
+    max-width:calc(100% - 8px);
     white-space:normal;
-    overflow:hidden;            /* ←タグ領域からはみ出さない */
-    max-height:5.3em;           /* ←最大2行（手動改行は2行想定） */
+    overflow:hidden;
+    max-height:5.3em;
     box-shadow:0 4px 10px rgba(0,0,0,.25);
   }
-  .name-tag .line{display:block; white-space:nowrap;} /* ←各行は折り返さない（手動改行固定） */
-
+  .name-tag .line{display:block; white-space:nowrap;}
   .weapon .name-tag{ background:#3b575b; }
   .evidence .name-tag{ background:#925f48; }
 </style>
@@ -370,7 +321,6 @@
   </div>
 </header>
 
-<!-- ★ header外：右上の四角ボタン -->
 <button id="viewToggleBtn" class="view-toggle-btn" title="表示切替（1列 / 2列）" aria-label="表示切替（1列 / 2列）">
   <div class="icon" aria-hidden="true"></div>
 </button>
@@ -447,7 +397,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
-/* userId: タブ単位固定 */
+/* userId */
 const savedUserId = sessionStorage.getItem('bbUserId') || crypto.randomUUID();
 sessionStorage.setItem('bbUserId', savedUserId);
 
@@ -459,7 +409,7 @@ const state = {
   seatedTable: null,
   isHost: false,
   room: {},
-  deal: {}, // rooms/.../deal を保持
+  deal: {},
 };
 
 const WEAPONS = [
@@ -501,22 +451,15 @@ const btnStartPopClose = document.getElementById('btnStartPopClose');
 const btnGameStart = document.getElementById('btnGameStart');
 const btnResetRoom = document.getElementById('btnResetRoom');
 
-/* ★ 表示切替ボタン */
 const viewToggleBtn = document.getElementById('viewToggleBtn');
 
-/* 追い出し（必要なら残す） */
+/* 追い出し */
 let pendingSeatIndexToSteal = null;
 let pendingSeatPlayerIdToSteal = null;
 let isRenderingSeatTabs = false;
 let latestPlayers = [];
 
-/* =========================
-   ★ 手動改行 & 自動フィット
-   ルール：
-   - 名前に "N\" を入れると、その位置で改行（2行表示）
-     例： "レーザーN\シャーク" / "インターネットN\ケーブル"
-   - それぞれの行がタグ枠内に入るサイズまでフォントを自動で下げる
-   ========================= */
+/* 手動改行 & 自動フィット */
 const _fitCanvas = document.createElement('canvas');
 const _fitCtx = _fitCanvas.getContext('2d');
 
@@ -525,9 +468,8 @@ function splitManualLines(name){
   if (name.includes('\n')) return name.split('\n');
   return [name];
 }
-
 function setNameTagLines(tagEl, name){
-  const lines = splitManualLines(name).slice(0, 2); // 2行まで
+  const lines = splitManualLines(name).slice(0, 2);
   tagEl.innerHTML = '';
   for (const line of lines){
     const s = document.createElement('span');
@@ -537,16 +479,13 @@ function setNameTagLines(tagEl, name){
   }
   return lines;
 }
-
 function measureTextWidthPx(text, font){
   _fitCtx.font = font;
   return _fitCtx.measureText(text).width;
 }
-
 function fitNameTag(tagEl, lines){
   requestAnimationFrame(() => {
     const cs = getComputedStyle(tagEl);
-
     const padL = parseFloat(cs.paddingLeft) || 0;
     const padR = parseFloat(cs.paddingRight) || 0;
     const availW = Math.max(0, tagEl.clientWidth - padL - padR);
@@ -554,7 +493,6 @@ function fitNameTag(tagEl, lines){
     const family = cs.fontFamily || 'system-ui';
     const weight = cs.fontWeight || '900';
 
-    // ★ 2列モードでは縮小に合わせて上限も少し下げる
     const isTwoCol = document.body.classList.contains('two-col');
     const maxFont = isTwoCol ? 9 : 10;
     const minFont = isTwoCol ? 5 : 6;
@@ -574,41 +512,41 @@ function fitNameTag(tagEl, lines){
     tagEl.style.fontSize = `${minFont}px`;
   });
 }
-/* ========================= */
-
-function generateRoomCode(length = 6){
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for(let i=0;i<length;i++) code += chars.charAt(Math.floor(Math.random()*chars.length));
-  return code;
-}
-
-function refreshRoomLabels(){
-  if (!state.roomCode || !state.userName) return;
-  const label = state.isHost ? '（ホスト）' : '';
-  const infoText = ` ${state.roomCode},  ${state.userName}${label}`;
-  roomInfo.textContent = infoText;
-  roomInfoLobby.textContent = infoText;
-}
-
-function updateHostUI(){
-  refreshRoomLabels();
-  if (state.isHost){
-    hostSettingsBtn.classList.add('visible');
-  } else {
-    hostSettingsBtn.classList.remove('visible');
-    startPop.classList.add('hidden');
-  }
-}
 
 /* =========================
-   ★ 表示モード：1列 / 2列
+   ★ 2列時：折り返し無しで必ず収めるための自動縮小
    ========================= */
-function setTwoColMode(on){
-  document.body.classList.toggle('two-col', !!on);
-  localStorage.setItem('bbTwoCol', on ? '1' : '0');
+function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
 
-  // 2列に切替後、タグの自動フィットをやり直す
+function computeAndApplyTwoColScale(){
+  // 2列じゃなければ 1 に戻す
+  if (!document.body.classList.contains('two-col')){
+    playersColumn.style.setProperty('--uiScale', '1');
+    return;
+  }
+
+  // まず一旦は上限値（見た目基準）
+  let scale = 0.82;
+
+  // どれか1つの row4 の実幅から「4枚+gap」が入るスケールを計算
+  const sampleRow = playersColumn.querySelector('.player-block .two-rows .row4');
+  if (sampleRow){
+    const avail = sampleRow.clientWidth; // row4が使える横幅
+
+    // 基準：カード60px×4 + gap8px×3 ＝ 264px
+    const baseCards = 60 * 4;
+    const baseGaps  = 8  * 3;
+    const baseTotal = baseCards + baseGaps; // 264
+
+    const needScale = avail / baseTotal;
+
+    // 2列時の見た目範囲（小さすぎ防止）
+    scale = clamp(needScale, 0.52, 0.82);
+  }
+
+  playersColumn.style.setProperty('--uiScale', String(scale));
+
+  // フォントフィットやり直し（スケール変化後）
   requestAnimationFrame(() => {
     document.querySelectorAll('.name-tag').forEach(tagEl => {
       const name = tagEl.getAttribute('data-name') || '';
@@ -618,6 +556,17 @@ function setTwoColMode(on){
     });
   });
 }
+
+/* =========================
+   表示モード：1列 / 2列
+   ========================= */
+function setTwoColMode(on){
+  document.body.classList.toggle('two-col', !!on);
+  localStorage.setItem('bbTwoCol', on ? '1' : '0');
+
+  // スケール再計算
+  requestAnimationFrame(() => computeAndApplyTwoColScale());
+}
 (function initTwoCol(){
   const saved = localStorage.getItem('bbTwoCol') === '1';
   setTwoColMode(saved);
@@ -626,7 +575,31 @@ viewToggleBtn.addEventListener('click', () => {
   const on = !document.body.classList.contains('two-col');
   setTwoColMode(on);
 });
-/* ========================= */
+window.addEventListener('resize', () => computeAndApplyTwoColScale());
+
+/* utils */
+function generateRoomCode(length = 6){
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for(let i=0;i<length;i++) code += chars.charAt(Math.floor(Math.random()*chars.length));
+  return code;
+}
+function refreshRoomLabels(){
+  if (!state.roomCode || !state.userName) return;
+  const label = state.isHost ? '（ホスト）' : '';
+  const infoText = ` ${state.roomCode},  ${state.userName}${label}`;
+  roomInfo.textContent = infoText;
+  roomInfoLobby.textContent = infoText;
+}
+function updateHostUI(){
+  refreshRoomLabels();
+  if (state.isHost){
+    hostSettingsBtn.classList.add('visible');
+  } else {
+    hostSettingsBtn.classList.remove('visible');
+    startPop.classList.add('hidden');
+  }
+}
 
 /* subscribe */
 function subscribeRoom(){
@@ -766,7 +739,6 @@ btnSeatCancel.onclick = () => {
   state.seatedTable = null;
 };
 
-/* util */
 function shuffle(arr){
   const a = arr.slice();
   for(let i=a.length-1;i>0;i--){
@@ -789,7 +761,7 @@ function makeCardEl(kind, name){
 
   const tag = document.createElement('div');
   tag.className = 'name-tag';
-  tag.setAttribute('data-name', name); // ★ 2列切替で再フィットするため保持
+  tag.setAttribute('data-name', name);
 
   const lines = setNameTagLines(tag, name);
 
@@ -797,11 +769,9 @@ function makeCardEl(kind, name){
   d.appendChild(tag);
 
   fitNameTag(tag, lines);
-
   return d;
 }
 
-/* ★ 正体カード */
 function makeRoleWrap(playerName, isMe, showFace, roleName){
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
@@ -839,7 +809,6 @@ function renderPlayersVertical(players){
     const block = document.createElement('div');
     block.className = 'player-block';
 
-    // ★ 2列モード用：右上ネームタグ（通常はCSSで非表示）
     const badge = document.createElement('div');
     badge.className = 'player-badge' + (p.id === state.userId ? ' me' : '');
     badge.textContent = p.name || '名無し';
@@ -850,7 +819,6 @@ function renderPlayersVertical(players){
 
     const deal = (state.deal && state.deal[p.id]) ? state.deal[p.id] : null;
 
-    /* 正体：自分だけ表（他人は裏） */
     const showRoleFace = (p.id === state.userId);
     const roleName = deal ? (deal.role || '') : '';
     dealArea.appendChild(makeRoleWrap(p.name, p.id === state.userId, showRoleFace, roleName));
@@ -878,6 +846,9 @@ function renderPlayersVertical(players){
 
     playersColumn.appendChild(block);
   });
+
+  // ★ 描画後に2列スケールを再計算（折り返し無しで必ず収める）
+  requestAnimationFrame(() => computeAndApplyTwoColScale());
 }
 
 /* join */
@@ -939,7 +910,7 @@ copyLinkBtn.addEventListener('click', async () => {
   }
 });
 
-/* kick dialog handlers（残す） */
+/* kick dialog handlers */
 kickDialog.addEventListener('click', (e) => {
   if (e.target === kickDialog) {
     kickDialog.classList.add('hidden');
@@ -990,7 +961,7 @@ btnStartPopClose.addEventListener('click', () => {
   startPop.classList.add('hidden');
 });
 
-/* ★ 配布：スタートで各プレイヤーに */
+/* 配布 */
 async function dealToAllPlayers(){
   if (!state.roomCode) return;
 
