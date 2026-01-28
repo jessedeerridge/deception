@@ -33,41 +33,85 @@
   main.prejoin{ background-image:url('maemain.jpg'); }
   main.joined{ background-image:url('decemain.jpg'); }
 
-  /* =========================
-     右上：四角いビュー切替ボタン（header外）
-     ========================= */
-  .view-toggle-btn{
-    position:fixed;
-    top:72px;
-    right:14px;
-    width:44px;
-    height:44px;
-    border-radius:10px;
-    border:1px solid rgba(0,0,0,.12);
-    background:rgba(255,255,255,.92);
-    box-shadow:0 10px 24px rgba(0,0,0,.18);
-    z-index:410;
-    cursor:pointer;
-    display:grid;
-    place-items:center;
-    user-select:none;
-    -webkit-tap-highlight-color:transparent;
-  }
-  .view-toggle-btn:hover{ background:#fff; }
-  .view-toggle-btn:active{ transform:translateY(1px); }
-  .view-toggle-btn .icon{ width:22px;height:22px; position:relative; }
-  .view-toggle-btn .icon::before{
-    content:"";
-    position:absolute; inset:0;
-    background:
-      radial-gradient(circle, rgba(0,0,0,.78) 2px, transparent 3px) 0 0/11px 11px;
-    opacity:.9;
-    border-radius:6px;
-  }
-  body.two-col .view-toggle-btn{
-    border-color:rgba(0,0,0,.28);
-    box-shadow:0 12px 28px rgba(0,0,0,.22);
-  }
+/* =========================
+   右上：表示切替ボタン（1列 / 2列）
+   ★ボタン入れ替え版★
+   ・正方形 / 枠なし / ぼかし無し / 透ける / 角丸
+   ・図形（入れ替え）：
+     1列ボタン = 左右2列×3段（6本）
+     2列ボタン = 中央に3本（縦に3つ）
+   ========================= */
+.view-toggle-btn{
+  position:fixed;
+  top:72px;
+  right:14px;
+
+  width:38px;
+  height:38px;
+
+  border-radius:10px;
+  border:none;
+  outline:none;
+
+  background:rgba(255,255,255,.18);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+
+  box-shadow:0 10px 24px rgba(0,0,0,.18);
+  z-index:410;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  transition: transform .12s ease, background .18s ease, box-shadow .18s ease;
+}
+.view-toggle-btn:hover{ background:rgba(255,255,255,.28); }
+.view-toggle-btn:active{ transform:translateY(1px) scale(.98); }
+
+.view-toggle-btn .icon{
+  width:22px;
+  height:22px;
+  position:relative;
+  border:none;
+  background:transparent;
+}
+
+/* ★1列ボタン（デフォルト）＝ 6本（左右2列×3段） */
+.view-toggle-btn .icon::before{
+  content:"";
+  position:absolute;
+  inset:3px;
+  background:
+    linear-gradient(rgba(0,0,0,.78) 0 18%, transparent 18% 41%,
+                    rgba(0,0,0,.78) 41% 59%, transparent 59% 82%,
+                    rgba(0,0,0,.78) 82% 100%),
+    linear-gradient(rgba(0,0,0,.78) 0 18%, transparent 18% 41%,
+                    rgba(0,0,0,.78) 41% 59%, transparent 59% 82%,
+                    rgba(0,0,0,.78) 82% 100%);
+  background-size: 46% 100%, 46% 100%;
+  background-position: left top, right top;
+  background-repeat:no-repeat;
+}
+
+/* 2列モード：ONっぽい見た目 */
+body.two-col .view-toggle-btn{
+  background:rgba(17,17,17,.18);
+  box-shadow:0 12px 28px rgba(0,0,0,.28);
+}
+body.two-col .view-toggle-btn:hover{ background:rgba(17,17,17,.28); }
+
+/* ★2列ボタン＝ 中央に3本 */
+body.two-col .view-toggle-btn .icon::before{
+  background:
+    linear-gradient(rgba(255,255,255,.92) 0 18%, transparent 18% 41%,
+                    rgba(255,255,255,.92) 41% 59%, transparent 59% 82%,
+                    rgba(255,255,255,.92) 82% 100%);
+  background-size: 70% 100%;
+  background-position: center top;
+  background-repeat:no-repeat;
+}
+
 
   /* 着席ポップ */
   .seat-pop{
@@ -137,7 +181,7 @@
      プレイヤー縦並び（＋2列）
      ========================= */
   .players-column{
-    width:min(980px, calc(100% - 0px));
+    width:min(980px, calc(100%));
     margin:0 auto;
     display:flex;
     flex-direction:column;
@@ -152,7 +196,7 @@
     display:grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap:10px;
-    width: min(980px, calc(100% - 16px));
+    width: min(980px, calc(100%));
   }
 
   .player-block{
@@ -172,7 +216,7 @@
   .player-badge{
     position:absolute;
     top: calc(6px * var(--uiScale));
-    right: calc(6px * var(--uiScale));
+    left: calc(6px * var(--uiScale));
     padding: calc(3px * var(--uiScale)) calc(7px * var(--uiScale));
     border-radius: 999px;
     font-weight: 900;
@@ -253,14 +297,14 @@
   .two-rows{
     display:flex;
     flex-direction:column;
-    gap: calc(8px * var(--uiScale));
+    gap: calc(2px * var(--uiScale));
     flex:1 1 auto;
     min-width:0;
   }
 
   .row4{
     display:flex;
-    gap: calc(8px * var(--uiScale));
+    gap: calc(2px * var(--uiScale));
     flex-wrap:nowrap;
     overflow:auto;          /* 1列モードでは横スクロールOK */
     padding-bottom:2px;
@@ -271,7 +315,7 @@
   body.two-col .row4{
     overflow:hidden;        /* 横スクロール禁止 */
     flex-wrap:nowrap;       /* 折り返し禁止 */
-    padding-top: calc(14px * var(--uiScale)); /* 右上ネームタグと干渉しにくく */
+    padding-top: calc(2px * var(--uiScale)); /* 右上ネームタグと干渉しにくく */
   }
 
   /* カード */
@@ -309,6 +353,13 @@
   .name-tag .line{display:block; white-space:nowrap;}
   .weapon .name-tag{ background:#3b575b; }
   .evidence .name-tag{ background:#925f48; }
+
+/* ★ 2列モード：右上ネームタグが隠れないよう上に余白を確保 */
+body.two-col .player-block{
+  padding-top: calc(26px * var(--uiScale)); /* ★追加 */
+}
+
+
 </style>
 </head>
 
