@@ -7,6 +7,7 @@
 <style>
   html, body{height:100%; overflow:hidden;}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
+
   header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #eee; position:sticky; top:0; z-index:400; background:#fff;}
   h1{margin:0;font-size:18px;}
   .small{font-size:12px;opacity:.75;}
@@ -23,6 +24,7 @@
     position:relative;
     height:calc(100vh - 60px);
     overflow:auto;
+    overflow-x:hidden; /* ★ 横スクロール防止 */
     -webkit-overflow-scrolling:touch;
     background-size:cover;
     background-position:center;
@@ -30,6 +32,47 @@
   }
   main.prejoin{ background-image:url('maemain.jpg'); }
   main.joined{ background-image:url('decemain.jpg'); }
+
+  /* =========================
+     ★ 右上：四角いビュー切替ボタン（header外）
+     ========================= */
+  .view-toggle-btn{
+    position:fixed;
+    top:72px;          /* headerの下にくる */
+    right:14px;
+    width:44px;
+    height:44px;
+    border-radius:10px;
+    border:1px solid rgba(0,0,0,.12);
+    background:rgba(255,255,255,.92);
+    box-shadow:0 10px 24px rgba(0,0,0,.18);
+    z-index:410;
+    cursor:pointer;
+    display:grid;
+    place-items:center;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .view-toggle-btn:hover{ background:#fff; }
+  .view-toggle-btn:active{ transform:translateY(1px); }
+  .view-toggle-btn .icon{
+    width:22px;height:22px;
+    position:relative;
+  }
+  /* “ZOOM/WORD っぽい”＝9ドットのグリッド模様 */
+  .view-toggle-btn .icon::before{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      radial-gradient(circle, rgba(0,0,0,.78) 2px, transparent 3px) 0 0/11px 11px;
+    opacity:.9;
+    border-radius:6px;
+  }
+  /* 2列モード時にちょい強調 */
+  body.two-col .view-toggle-btn{
+    border-color:rgba(0,0,0,.28);
+    box-shadow:0 12px 28px rgba(0,0,0,.22);
+  }
 
   /* 着席ポップ */
   .seat-pop{
@@ -100,31 +143,79 @@
     gap:10px;
   }
 
-/* =========================
-   ★ 新UI：プレイヤー縦並び
-   ========================= */
-.players-column{
-  width:min(980px, calc(100% - 0px));
-  margin:0 auto;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.player-block{
-  /* ↓ここを変更 */
-  background: rgba(25,25,25,.90);   /* 濃いグレー透明 */
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius:14px;
-  box-shadow:0 10px 24px rgba(0,0,0,.20);
-  padding:5px;
-}
+  /* =========================
+     ★ 新UI：プレイヤー縦並び
+     ========================= */
+  .players-column{
+    width:min(980px, calc(100% - 0px));
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
 
+    /* ★ 縮小スケール（2列時に下げる） */
+    --uiScale: 1;
+  }
+  body.two-col .players-column{
+    /* 2列時：同じ比率で縮小 */
+    --uiScale: .82;
+  }
+
+  /* 2列モード：テーブルを2列グリッドに */
+  body.two-col .players-column{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap:10px;
+    width: min(980px, calc(100% - 16px));
+  }
+
+  .player-block{
+    background: rgba(25,25,25,.90);   /* 濃いグレー透明 */
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: calc(14px * var(--uiScale));
+    box-shadow:0 10px 24px rgba(0,0,0,.20);
+    padding: calc(5px * var(--uiScale));
+    position:relative; /* ★ 右上ネームタグ用 */
+    min-width:0;
+  }
+
+  /* ★ 2列モード時：正体カードは非表示 */
+  body.two-col .role-wrap{ display:none; }
+
+  /* ★ 2列モード時：テーブル右上内にネームタグ */
+  .player-badge{
+    position:absolute;
+    top: calc(6px * var(--uiScale));
+    right: calc(6px * var(--uiScale));
+    padding: calc(3px * var(--uiScale)) calc(7px * var(--uiScale));
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: calc(11px * var(--uiScale));
+    line-height: 1;
+    letter-spacing:.02em;
+    background: rgba(255,255,255,.92);
+    color:#111;
+    border:1px solid rgba(255,255,255,.25);
+    box-shadow:0 6px 14px rgba(0,0,0,.22);
+    display:none; /* 通常は出さない */
+    max-width: 70%;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  body.two-col .player-badge{ display:block; }
+  body.two-col .player-badge.me{ background:#111; color:#fff; border-color:#111; }
 
   /* 配札エリア：左に正体カード、右に2段（凶器/証拠品） */
   .deal-area{
     display:flex;
-    gap:10px;
+    gap: calc(10px * var(--uiScale));
     align-items:center; /* 上下中央に寄せる */
+    min-width:0;
+  }
+  body.two-col .deal-area{
+    align-items:flex-start;
+    gap: calc(8px * var(--uiScale));
   }
 
   /* ★ ネームタグ：正体カードのすぐ上（フォント10） */
@@ -136,11 +227,11 @@
     align-items:flex-start;
   }
   .role-name-tag{
-    font-size:10px;
+    font-size: calc(10px * var(--uiScale));
     font-weight:900;
     line-height:1.1;
     letter-spacing:.02em;
-    padding:2px 6px;
+    padding: calc(2px * var(--uiScale)) calc(6px * var(--uiScale));
     border-radius:999px;
     background:#f3f4f6;
     border:1px solid #e5e7eb;
@@ -154,10 +245,10 @@
 
   /* 正体カード（60x90） */
   .role-slot{
-    width:60px;
-    height:90px;
-    border-radius:10px;
-    border:2px solid #111;
+    width: calc(60px * var(--uiScale));
+    height: calc(90px * var(--uiScale));
+    border-radius: calc(10px * var(--uiScale));
+    border: calc(2px * var(--uiScale)) solid #111;
     background:#fff;
     box-shadow:0 6px 16px rgba(0,0,0,.15);
     position:relative;
@@ -178,14 +269,14 @@
   /* ★ 正体カードのカード名：右下（「正体」タグは不要） */
   .role-cardname{
     position:absolute;
-    right:4px;
-    bottom:4px;
-    padding:3px 5px;
-    border-radius:6px;
+    right: calc(4px * var(--uiScale));
+    bottom: calc(4px * var(--uiScale));
+    padding: calc(3px * var(--uiScale)) calc(5px * var(--uiScale));
+    border-radius: calc(6px * var(--uiScale));
     background:rgba(0,0,0,.85);
     color:#fff;
     font-weight:900;
-    font-size:10px;
+    font-size: calc(10px * var(--uiScale));
     line-height:1;
     max-width:calc(100% - 8px);
     white-space:nowrap;
@@ -197,16 +288,24 @@
   .two-rows{
     display:flex;
     flex-direction:column;
-    gap:8px;
+    gap: calc(8px * var(--uiScale));
     flex:1 1 auto;
     min-width:0;
   }
   .row4{
     display:flex;
-    gap:8px;
+    gap: calc(8px * var(--uiScale));
     flex-wrap:nowrap;
     overflow:auto;
     padding-bottom:2px;
+    min-width:0;
+  }
+  /* ★ 2列モード時：横スクロールしない（カードを縮小＆折り返し） */
+  body.two-col .row4{
+    overflow:hidden;
+    flex-wrap:wrap;
+    gap: calc(6px * var(--uiScale));
+    padding-top: calc(12px * var(--uiScale)); /* 右上ネームタグと被りにくく */
   }
 
   /* =========================
@@ -215,17 +314,17 @@
      証拠品：#925f48
      ========================= */
   .card{
-    width:60px;
-    height:90px;
-    border-radius:10px;
+    width: calc(60px * var(--uiScale));
+    height: calc(90px * var(--uiScale));
+    border-radius: calc(10px * var(--uiScale));
     background:#fff;
     box-shadow:0 6px 16px rgba(0,0,0,.15);
     position:relative;
     overflow:hidden;
     flex:0 0 auto;
   }
-  .card.weapon{ border:3px solid #3b575b; }
-  .card.evidence{ border:3px solid #925f48; }
+  .card.weapon{ border: calc(3px * var(--uiScale)) solid #3b575b; }
+  .card.evidence{ border: calc(3px * var(--uiScale)) solid #925f48; }
 
   .card img{
     position:absolute; inset:0;
@@ -239,27 +338,26 @@
   /* ★ カード左上の名前タグ：手動改行 + 自動フィット */
   .name-tag{
     position:absolute;
-    left:4px; top:5px;
-    padding:6px 3px;
-    border-radius:7px;
+    left: calc(4px * var(--uiScale));
+    top: calc(5px * var(--uiScale));
+    padding: calc(6px * var(--uiScale)) calc(3px * var(--uiScale));
+    border-radius: calc(7px * var(--uiScale));
     font-weight:900;
-    font-size:12px;            /* ←基準（JSで下げる） */
+    font-size: calc(12px * var(--uiScale)); /* ←基準（JSで下げる） */
     line-height:1.15;
     color:#fff;
 
     box-sizing:border-box;
     max-width:calc(100% - 8px); /* ←必ず枠内 */
     white-space:normal;
-    overflow:hidden;           /* ←タグ領域からはみ出さない */
-    max-height:5.3em;          /* ←最大2行（手動改行は2行想定） */
+    overflow:hidden;            /* ←タグ領域からはみ出さない */
+    max-height:5.3em;           /* ←最大2行（手動改行は2行想定） */
     box-shadow:0 4px 10px rgba(0,0,0,.25);
   }
   .name-tag .line{display:block; white-space:nowrap;} /* ←各行は折り返さない（手動改行固定） */
 
   .weapon .name-tag{ background:#3b575b; }
   .evidence .name-tag{ background:#925f48; }
-
-  /* デバッグ表示は不要：エラー時も何も出さない */
 </style>
 </head>
 
@@ -271,6 +369,11 @@
     <button class="btn ghost" id="copyLinkBtn">COPY</button>
   </div>
 </header>
+
+<!-- ★ header外：右上の四角ボタン -->
+<button id="viewToggleBtn" class="view-toggle-btn" title="表示切替（1列 / 2列）" aria-label="表示切替（1列 / 2列）">
+  <div class="icon" aria-hidden="true"></div>
+</button>
 
 <main id="main" class="prejoin">
   <div class="join-box" id="joinBox">
@@ -398,6 +501,9 @@ const btnStartPopClose = document.getElementById('btnStartPopClose');
 const btnGameStart = document.getElementById('btnGameStart');
 const btnResetRoom = document.getElementById('btnResetRoom');
 
+/* ★ 表示切替ボタン */
+const viewToggleBtn = document.getElementById('viewToggleBtn');
+
 /* 追い出し（必要なら残す） */
 let pendingSeatIndexToSteal = null;
 let pendingSeatPlayerIdToSteal = null;
@@ -409,7 +515,7 @@ let latestPlayers = [];
    ルール：
    - 名前に "N\" を入れると、その位置で改行（2行表示）
      例： "レーザーN\シャーク" / "インターネットN\ケーブル"
-   - それぞれの行がタグ枠内に入るまでフォントを自動で下げる
+   - それぞれの行がタグ枠内に入るサイズまでフォントを自動で下げる
    ========================= */
 const _fitCanvas = document.createElement('canvas');
 const _fitCtx = _fitCanvas.getContext('2d');
@@ -438,7 +544,6 @@ function measureTextWidthPx(text, font){
 }
 
 function fitNameTag(tagEl, lines){
-  // DOMに乗ってから幅が確定するので rAF で計測
   requestAnimationFrame(() => {
     const cs = getComputedStyle(tagEl);
 
@@ -449,10 +554,11 @@ function fitNameTag(tagEl, lines){
     const family = cs.fontFamily || 'system-ui';
     const weight = cs.fontWeight || '900';
 
-    const maxFont = 10;   // 基準
-    const minFont = 6;    // これ以下にはしない（必要なら下げてOK）
+    // ★ 2列モードでは縮小に合わせて上限も少し下げる
+    const isTwoCol = document.body.classList.contains('two-col');
+    const maxFont = isTwoCol ? 9 : 10;
+    const minFont = isTwoCol ? 5 : 6;
 
-    // 2行想定：各行は nowrap なので「一番長い行」が入るサイズまで落とす
     for (let size = maxFont; size >= minFont; size--){
       const font = `${weight} ${size}px ${family}`;
       let ok = true;
@@ -465,11 +571,9 @@ function fitNameTag(tagEl, lines){
         return;
       }
     }
-    // 最小でも入らない時は最小にして終了（見切れ防止はCSS overflow:hidden）
     tagEl.style.fontSize = `${minFont}px`;
   });
 }
-
 /* ========================= */
 
 function generateRoomCode(length = 6){
@@ -496,6 +600,33 @@ function updateHostUI(){
     startPop.classList.add('hidden');
   }
 }
+
+/* =========================
+   ★ 表示モード：1列 / 2列
+   ========================= */
+function setTwoColMode(on){
+  document.body.classList.toggle('two-col', !!on);
+  localStorage.setItem('bbTwoCol', on ? '1' : '0');
+
+  // 2列に切替後、タグの自動フィットをやり直す
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.name-tag').forEach(tagEl => {
+      const name = tagEl.getAttribute('data-name') || '';
+      const lines = splitManualLines(name).slice(0,2);
+      setNameTagLines(tagEl, name);
+      fitNameTag(tagEl, lines);
+    });
+  });
+}
+(function initTwoCol(){
+  const saved = localStorage.getItem('bbTwoCol') === '1';
+  setTwoColMode(saved);
+})();
+viewToggleBtn.addEventListener('click', () => {
+  const on = !document.body.classList.contains('two-col');
+  setTwoColMode(on);
+});
+/* ========================= */
 
 /* subscribe */
 function subscribeRoom(){
@@ -651,7 +782,6 @@ function makeCardEl(kind, name){
   d.className = `card ${kind}`;
 
   const img = document.createElement('img');
-  // 画像ファイル名に N\ が混ざると壊れるので、表示用の改行記号は除去して読み込む
   const fileName = name.replaceAll('N\\', '').replaceAll('\n', '');
   img.src = `${fileName}.jpg`;
   img.alt = name;
@@ -659,11 +789,10 @@ function makeCardEl(kind, name){
 
   const tag = document.createElement('div');
   tag.className = 'name-tag';
+  tag.setAttribute('data-name', name); // ★ 2列切替で再フィットするため保持
 
-  // ★ 手動改行（N\）を反映して2行にし、枠内に収まるまでフォントを自動調整
   const lines = setNameTagLines(tag, name);
-  // 幅計測にはDOMに入ってる必要があるので、追加後にfit
-  // （dにappendした後にfitNameTagを呼ぶ）
+
   d.appendChild(img);
   d.appendChild(tag);
 
@@ -672,11 +801,7 @@ function makeCardEl(kind, name){
   return d;
 }
 
-/* ★ 正体カード
-   - ネームタグはカードのすぐ上（フォント10）
-   - カード名は右下（「正体」タグ不要）
-   - 画像は「カード名.jpg」
-*/
+/* ★ 正体カード */
 function makeRoleWrap(playerName, isMe, showFace, roleName){
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
@@ -713,6 +838,12 @@ function renderPlayersVertical(players){
   players.forEach(p => {
     const block = document.createElement('div');
     block.className = 'player-block';
+
+    // ★ 2列モード用：右上ネームタグ（通常はCSSで非表示）
+    const badge = document.createElement('div');
+    badge.className = 'player-badge' + (p.id === state.userId ? ' me' : '');
+    badge.textContent = p.name || '名無し';
+    block.appendChild(badge);
 
     const dealArea = document.createElement('div');
     dealArea.className = 'deal-area';
@@ -859,11 +990,7 @@ btnStartPopClose.addEventListener('click', () => {
   startPop.classList.add('hidden');
 });
 
-/* ★ 配布：スタートで各プレイヤーに
-   - 凶器：各プレイヤー4枚（全体で重複なし）
-   - 証拠品：各プレイヤー4枚（全体で重複なし）
-   - 正体：殺人犯1、法医学者1、残り捜査官
-   - 表示：凶器/証拠品は全員表。正体は自分だけ表、他人は裏。 */
+/* ★ 配布：スタートで各プレイヤーに */
 async function dealToAllPlayers(){
   if (!state.roomCode) return;
 
@@ -881,21 +1008,18 @@ async function dealToAllPlayers(){
   const n = players.length;
   if (n <= 0) return;
 
-  /* デッキ作成（重複なしにするため Set） */
   const uniqW = Array.from(new Set(WEAPONS));
   const uniqE = Array.from(new Set(EVIDENCES));
 
   const sw = shuffle(uniqW);
   const se = shuffle(uniqE);
 
-  /* 正体 */
   const roles = [];
   roles.push("殺人犯");
   roles.push("法医学者");
   while (roles.length < n) roles.push("捜査官");
   const sRoles = shuffle(roles);
 
-  /* deal生成 */
   const deal = {};
   let wIdx = 0;
   let eIdx = 0;
