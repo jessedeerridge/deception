@@ -1082,7 +1082,7 @@
     height:260px;
     position:relative;
     border-radius:16px;
-    overflow:hidden;
+    overflow:visible;
     background:#fff;
     box-shadow:0 22px 48px rgba(0,0,0,.45);
     transform:translateZ(0);
@@ -1105,9 +1105,18 @@
     background-size:cover;
     background-position:center;
     opacity:0;
+    border-radius:16px;
+    background-color:#fff;
+  }
+  .witness-reveal-card.is-hit{
+    background:transparent;
+    box-shadow:none;
   }
   .witness-reveal-card.is-hit img{ opacity:0; }
-  .witness-reveal-card.is-hit .witness-card-half{ opacity:1; }
+  .witness-reveal-card.is-hit .witness-card-half{
+    opacity:1;
+    box-shadow:0 22px 48px rgba(0,0,0,.45);
+  }
   .witness-reveal-card.is-miss img{ opacity:1; }
   .witness-reveal-card.is-miss .witness-card-half{ opacity:0; }
 
@@ -1119,7 +1128,7 @@
     clip-path: polygon(0 62%, 100% 46%, 100% 100%, 0 100%);
     animation: witnessSplitBottom 1.6s ease forwards;
   }
-  .witness-reveal-card.animate.is-miss img{
+  .witness-reveal-card.animate.is-miss{
     animation: witnessDrop 2.1s ease forwards;
   }
   @keyframes witnessSplitTop{
