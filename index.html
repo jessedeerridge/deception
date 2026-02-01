@@ -464,6 +464,10 @@
     object-fit:contain;
     flex:0 0 auto;
   }
+  body.two-col .answer-chip{
+    width: 14px;
+    height: 14px;
+  }
   .identity-name-tag{
   font-size: 11px;
     font-weight:900;
@@ -3867,10 +3871,20 @@ function buildPlayerBlock(p, isForensic){
 
   if (!isForensic){
     const chip = document.createElement('img');
-    chip.className = 'answer-chip' + (isAnswerUsed(p.id) ? ' used' : '');
+    const chipUsed = isAnswerUsed(p.id);
+    const isClickable = isMe && !chipUsed;
+    chip.className = 'answer-chip' + (isClickable ? ' clickable' : '') + (chipUsed ? ' used' : '');
     chip.src = 'answerchip.png';
     chip.alt = 'answerchip';
     chip.loading = 'eager';
+    if (isMe){
+      chip.style.pointerEvents = 'auto';
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isAnswerUsed(state.userId) || state.answering) return;
+        openAnswerConfirmPopAt(e.clientX, e.clientY);
+      });
+    }
     badgeGroup.appendChild(chip);
   }
 
