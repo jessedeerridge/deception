@@ -305,6 +305,45 @@
   }
   .host-selecting-pop.hidden{display:none;}
 
+  .answering-pop{
+    position:fixed;
+    left:50%;
+    top:50%;
+    transform:translate(-50%, -50%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    z-index:240;
+    pointer-events:none;
+  }
+  .answering-pop.hidden{ display:none; }
+  .answering-pop-message{
+    background:rgba(0,0,0,.92);
+    color:#fff;
+    padding:12px 18px;
+    border-radius:16px;
+    font-weight:800;
+    white-space:nowrap;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+  }
+  .answering-host-actions{
+    display:flex;
+    gap:10px;
+    pointer-events:auto;
+  }
+  .answering-host-actions.hidden{ display:none; }
+  .answering-judge-btn{
+    border:none;
+    border-radius:999px;
+    padding:10px 16px;
+    font-weight:800;
+    cursor:pointer;
+    box-shadow:0 12px 24px rgba(0,0,0,.25);
+  }
+  .answering-judge-btn.correct{ background:#16a34a; color:#fff; }
+  .answering-judge-btn.wrong{ background:#dc2626; color:#fff; }
+
   .dialog-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,.35);
     display:flex;align-items:center;justify-content:center;z-index:300;
@@ -394,6 +433,8 @@
     object-fit:contain;
     flex:0 0 auto;
   }
+  .answer-chip.answered{ opacity:.8; }
+  .answer-chip.clickable{ cursor:pointer; }
   .identity-name-tag{
     font-size: calc(10px * var(--uiScale));
     font-weight:900;
@@ -1137,6 +1178,14 @@
   <div class="msg">The Murderer is choosing cards...</div>
 </div>
 
+<div id="answeringPop" class="answering-pop hidden" aria-hidden="true">
+  <div id="answeringPopMessage" class="answering-pop-message">（プレイヤー）が回答中...</div>
+  <div id="answeringHostActions" class="answering-host-actions hidden">
+    <button id="btnAnswerCorrect" class="answering-judge-btn correct">正解</button>
+    <button id="btnAnswerWrong" class="answering-judge-btn wrong">不正解</button>
+  </div>
+</div>
+
 <div id="helpBackdrop" class="help-pop-backdrop hidden" aria-hidden="true">
   <div class="help-pop" role="dialog" aria-modal="true" aria-label="正体カード一覧">
     <div class="help-pop-head">
@@ -1153,6 +1202,16 @@
     <div class="scene-grid-wrap">
       <div id="sceneHint" class="scene-hint">Scene</div>
       <div id="sceneGrid" class="scene-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="answerConfirmBackdrop" class="dialog-backdrop hidden" aria-hidden="true">
+  <div class="dialog-box" role="dialog" aria-modal="true" aria-label="回答確認">
+    <p id="answerConfirmMessage">回答しますか？</p>
+    <div class="dialog-buttons">
+      <button class="btn ghost" id="btnAnswerConfirmNo">いいえ</button>
+      <button class="btn primary" id="btnAnswerConfirmYes">はい</button>
     </div>
   </div>
 </div>
@@ -1242,6 +1301,9 @@ const state = {
   discussionStage: 1,
   isForensicViewer: false,
   _playersLoaded: false,
+
+  answering: null,
+  answeredPlayers: {},
 
   _pendingReplace: null,
   _drag: null,
@@ -1354,6 +1416,11 @@ const centerIntro = document.getElementById('centerIntro');
 const centerIntroPop = document.getElementById('centerIntroPop');
 
 const choosingPop = document.getElementById('choosingPop');
+const answeringPop = document.getElementById('answeringPop');
+const answeringPopMessage = document.getElementById('answeringPopMessage');
+const answeringHostActions = document.getElementById('answeringHostActions');
+const btnAnswerCorrect = document.getElementById('btnAnswerCorrect');
+const btnAnswerWrong = document.getElementById('btnAnswerWrong');
 
 const helpBtn = document.getElementById('helpBtn');
 const helpBackdrop = document.getElementById('helpBackdrop');
@@ -1366,6 +1433,11 @@ const btnReplaceYes = document.getElementById('btnReplaceYes');
 const btnReplaceNo  = document.getElementById('btnReplaceNo');
 
 const discussionPop = document.getElementById('discussionPop');
+
+const answerConfirmBackdrop = document.getElementById('answerConfirmBackdrop');
+const answerConfirmMessage = document.getElementById('answerConfirmMessage');
+const btnAnswerConfirmYes = document.getElementById('btnAnswerConfirmYes');
+const btnAnswerConfirmNo = document.getElementById('btnAnswerConfirmNo');
 
 /* Scene picker DOM */
 const scenePickerBackdrop = document.getElementById('scenePickerBackdrop');
@@ -1551,6 +1623,7 @@ function updateHostUI(){
 
   updateBottomControlsPosition();
   if (!helpBackdrop.classList.contains('hidden')) renderHelpList();
+  updateAnsweringPop();
 }
 
 /* subscribe */
@@ -1749,6 +1822,23 @@ function subscribeSceneSelection(){
     }
   });
 }
+function subscribeAnswering(){
+  const aRef = ref(db, `rooms/${state.roomCode}/answering`);
+  onValue(aRef, snap => {
+    state.answering = snap.val() || null;
+    updateAnsweringPop();
+    if (state.answering && state.answering.playerId){
+      closeAnswerConfirm();
+    }
+  });
+}
+function subscribeAnsweredPlayers(){
+  const aRef = ref(db, `rooms/${state.roomCode}/answeredPlayers`);
+  onValue(aRef, snap => {
+    state.answeredPlayers = snap.val() || {};
+    renderPlayersVertical(latestPlayers);
+  });
+}
 
 /* =========================
    ★追加：リセット時のローカル同期（未着席へ）
@@ -1771,10 +1861,14 @@ function handleRoomResetLocal(resetAt){
   state.forensicReplacePreview = null;
   state.forensicDiscarded = {};
   state.sceneSelection = null;
+  state.answering = null;
+  state.answeredPlayers = {};
   state._introDone = true;
 
+  closeAnswerConfirm();
   renderPlayersVertical(latestPlayers);
   updateChoosingPopup();
+  updateAnsweringPop();
   syncSeatUI().catch(()=>{});
 }
 
@@ -1946,6 +2040,20 @@ function findPlayerNameById(pid){
   const p = latestPlayers.find(x => x.id === pid);
   return p ? (p.name || '名無し') : '名無し';
 }
+function isPlayerAnswered(pid){
+  return !!(pid && state.answeredPlayers && state.answeredPlayers[pid]);
+}
+function applyAnswerChipState(chipEl, playerId, isMe){
+  if (!chipEl) return;
+  chipEl.classList.toggle('answered', isPlayerAnswered(playerId));
+  if (isMe){
+    chipEl.classList.add('clickable');
+    chipEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAnswerConfirm();
+    });
+  }
+}
 
 /* ★選択系ヘルパ */
 function getViewerRoleName(){
@@ -1998,6 +2106,67 @@ function updateChoosingPopup(){
   choosingPop.classList.toggle('show', shouldShow);
   choosingPop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
 }
+function updateAnsweringPop(){
+  const active = state.answering && state.answering.playerId;
+  if (active){
+    const name = state.answering.playerName || findPlayerNameById(state.answering.playerId);
+    answeringPopMessage.textContent = `${name}が回答中...`;
+    answeringPop.classList.remove('hidden');
+    answeringPop.setAttribute('aria-hidden', 'false');
+  } else {
+    answeringPop.classList.add('hidden');
+    answeringPop.setAttribute('aria-hidden', 'true');
+  }
+  const showHostActions = !!active && state.isHost;
+  answeringHostActions.classList.toggle('hidden', !showHostActions);
+}
+
+function canStartAnswering(){
+  return !!state._lastDealStamp && !state.answering?.playerId;
+}
+function openAnswerConfirm(){
+  if (!canStartAnswering()) return;
+  answerConfirmMessage.textContent = '回答しますか？';
+  answerConfirmBackdrop.classList.remove('hidden');
+  answerConfirmBackdrop.setAttribute('aria-hidden', 'false');
+}
+function closeAnswerConfirm(){
+  answerConfirmBackdrop.classList.add('hidden');
+  answerConfirmBackdrop.setAttribute('aria-hidden', 'true');
+}
+async function startAnsweringForSelf(){
+  if (!state.roomCode) return;
+  if (!canStartAnswering()) return;
+  const payload = {
+    playerId: state.userId,
+    playerName: state.userName || findPlayerNameById(state.userId),
+    at: Date.now()
+  };
+  await set(ref(db, `rooms/${state.roomCode}/answering`), payload).catch(()=>{});
+  await set(ref(db, `rooms/${state.roomCode}/answeredPlayers/${state.userId}`), true).catch(()=>{});
+}
+
+btnAnswerConfirmNo.addEventListener('click', () => {
+  closeAnswerConfirm();
+});
+btnAnswerConfirmYes.addEventListener('click', async () => {
+  closeAnswerConfirm();
+  await startAnsweringForSelf();
+});
+answerConfirmBackdrop.addEventListener('click', (e) => {
+  if (e.target === answerConfirmBackdrop) closeAnswerConfirm();
+});
+
+btnAnswerCorrect.addEventListener('click', async () => {
+  if (!state.isHost || !state.roomCode) return;
+  if (!state.answering?.playerId) return;
+  await remove(ref(db, `rooms/${state.roomCode}/answering`)).catch(()=>{});
+});
+btnAnswerWrong.addEventListener('click', async () => {
+  if (!state.isHost || !state.roomCode) return;
+  if (!state.answering?.playerId) return;
+  await remove(ref(db, `rooms/${state.roomCode}/answering`)).catch(()=>{});
+});
 
 async function setHandSelection(roleKey, kind, idx, name){
   if (!state.roomCode) return;
@@ -3560,6 +3729,7 @@ function buildPlayerBlock(p, isForensic){
     chip.src = 'answerchip.png';
     chip.alt = 'answerchip';
     chip.loading = 'eager';
+    applyAnswerChipState(chip, p.id, isMe);
     badgeGroup.appendChild(chip);
   }
 
@@ -3578,7 +3748,10 @@ function buildPlayerBlock(p, isForensic){
   block.appendChild(badgeGroup);
 
   if (!isForensic){
-    area.appendChild(makeRoleWrap(p.name, isMe, showFace, roleName, revealRoleNames));
+    const roleWrap = makeRoleWrap(p.name, isMe, showFace, roleName, revealRoleNames);
+    const roleAnswerChip = roleWrap.querySelector('.answer-chip');
+    applyAnswerChipState(roleAnswerChip, p.id, isMe);
+    area.appendChild(roleWrap);
 
     const two = document.createElement('div');
     two.className = 'two-rows';
@@ -3720,6 +3893,8 @@ async function joinRoom(){
   subscribeSelections();
   subscribePhase();
   subscribeSceneSelection();
+  subscribeAnswering();
+  subscribeAnsweredPlayers();
 
   // seat UI
   await syncSeatUI().catch(()=>{});
@@ -3791,6 +3966,8 @@ btnResetRoom.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${code}/forensicReplacePreview`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/forensicDiscarded`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/sceneSelection`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/answering`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/answeredPlayers`)).catch(()=>{});
   await set(ref(db, `rooms/${code}/discussionStage`), 1).catch(()=>{});
 
   // kick everyone seats
@@ -3894,6 +4071,8 @@ btnGameStart.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${state.roomCode}/forensicPick`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/forensicClues`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/sceneSelection`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/answering`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/answeredPlayers`)).catch(()=>{});
   await set(ref(db, `rooms/${state.roomCode}/discussionStage`), 1).catch(()=>{});
 });
 
