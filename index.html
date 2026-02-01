@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html> 
 <html lang="ja">
 <head>
@@ -36,7 +35,7 @@
     background-repeat:no-repeat;
     padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
-  main.prejoin{ background-image:url('maemain.jpg'); }
+  main.prejoin{ background-image:url('decetop.jpg'); }
   main.joined{ background-image:url('decemain.jpg'); }
 
   #lobby.entered{
@@ -269,6 +268,37 @@
     cursor:pointer;
     transition: transform .12s ease, box-shadow .18s ease, opacity .18s ease;
   }
+
+/* ★Helpタブ：正体カード画像を表示するための追記 */
+.role-card img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  background:#fff;
+}
+
+/* 画像が無いときのフォールバック文字 */
+.role-card .role-fallback{
+  position:absolute;
+  left:6px;
+  right:6px;
+  bottom:6px;
+  padding:4px 6px;
+  border-radius:8px;
+  background:rgba(0,0,0,.72);
+  color:#fff;
+  font-weight:900;
+  font-size:10px;
+  line-height:1;
+  text-align:center;
+  display:none;
+}
+.role-card.noimg .role-fallback{ display:block; }
+
+
   .role-card.clickable:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.14); }
   .role-card.clickable:active{ transform:translateY(0px) scale(.99); }
 
@@ -329,6 +359,40 @@
   .start-pop-main{font-size:13px;line-height:1.5;}
   .start-pop-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;flex-wrap:wrap;}
 
+  /* =========================
+     ★Answer chip confirm pop
+     ========================= */
+  .answer-confirm-pop{
+    position:fixed;
+    left:0; top:0;
+    background:#fff;
+    border:1px solid rgba(0,0,0,.16);
+    border-radius:12px;
+    box-shadow:0 18px 40px rgba(0,0,0,.22);
+    padding:10px 12px;
+    z-index:1000;
+    min-width: 210px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .answer-confirm-pop.hidden{ display:none; }
+  .answer-confirm-text{
+    font-size:13px;
+    font-weight:700;
+    line-height:1.4;
+  }
+  .answer-confirm-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+
+  /* 自分のチップだけクリックできる見た目に */
+  .answer-chip.clickable{
+    cursor:pointer;
+  }
+
   #roomInfoLobby, #lobby h2, #lobby p {display:none;}
 
   .players-column{
@@ -374,7 +438,7 @@
     padding: calc(3px * var(--uiScale)) calc(7px * var(--uiScale));
     border-radius: 999px;
     font-weight: 900;
-    font-size: calc(11px * var(--uiScale));
+  font-size: 11px;
     line-height: 1;
     letter-spacing:.02em;
     background: rgba(255,255,255,.92);
@@ -395,7 +459,7 @@
     flex:0 0 auto;
   }
   .identity-name-tag{
-    font-size: calc(10px * var(--uiScale));
+  font-size: 11px;
     font-weight:900;
     line-height:1.1;
     letter-spacing:.02em;
@@ -435,7 +499,7 @@
     gap: calc(4px * var(--uiScale));
   }
   .role-name-tag{
-    font-size: calc(10px * var(--uiScale));
+  font-size: 11px;
     font-weight:900;
     line-height:1.1;
     letter-spacing:.02em;
@@ -453,15 +517,15 @@
     width: calc(60px * var(--uiScale));
     height: calc(90px * var(--uiScale));
     border-radius: calc(10px * var(--uiScale));
-    border: calc(3px * var(--uiScale)) solid #2f2a6d;
+    border: calc(3px * var(--uiScale)) solid #62341D;
     background:#fff;
     box-shadow:0 6px 16px rgba(0,0,0,.15);
     position:relative;
     overflow:hidden;
   }
   .role-slot.back{
-    background: #2f2a6d url('deceroleura.jpg') center/cover no-repeat;
-    border-color:#2f2a6d;
+    background: #62341D url('deceroleura.jpg') center/cover no-repeat;
+    border-color:#62341D;
   }
   .role-slot img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; background:#fff; }
   .role-cardname{
@@ -496,8 +560,8 @@
     left:0;
   }
   .role-stack .role-slot:nth-child(2){
-    left: calc(8px * var(--uiScale));
-    top: calc(6px * var(--uiScale));
+    left: calc(13px * var(--uiScale));
+    top: calc(21px * var(--uiScale));
   }
 
   .two-rows{
@@ -508,6 +572,8 @@
     min-width:0;
     overflow:visible;
   }
+.role-stack .role-slot:nth-child(1){ z-index: 2; }
+.role-stack .role-slot:nth-child(2){ z-index: 1; }
 
   .row4{
     display:flex;
@@ -558,7 +624,7 @@
     padding: calc(6px * var(--uiScale)) calc(3px * var(--uiScale));
     border-radius: calc(7px * var(--uiScale));
     font-weight:900;
-    font-size: calc(12px * var(--uiScale));
+  font-size: 11px;
     line-height:1.15;
     color:#fff;
     box-sizing:border-box;
@@ -846,7 +912,7 @@
     border-radius:12px;
     background:#fff;
     box-shadow:0 18px 40px rgba(0,0,0,.35);
-    border:2px solid rgba(255,255,255,.55);
+    border:3px solid #62341D;
     overflow:hidden;
   }
   .center-intro-card img{
@@ -1124,6 +1190,15 @@
   </div>
 </div>
 
+<!-- ★Answer Chip confirm pop -->
+<div id="answerConfirmPop" class="answer-confirm-pop hidden" role="dialog" aria-modal="true" aria-label="Answer confirm">
+  <div class="answer-confirm-text">Do you want to answer?</div>
+  <div class="answer-confirm-actions">
+    <button id="btnAnswerYes" class="btn primary">Yes</button>
+    <button id="btnAnswerNo" class="btn ghost">No</button>
+  </div>
+</div>
+
 <div id="centerIntro" class="center-intro">
   <div class="center-intro-inner">
     <div id="centerIntroPop" class="center-intro-pop">法医学者は「??」です。</div>
@@ -1134,7 +1209,7 @@
 </div>
 
 <div id="choosingPop" class="choosing-pop" aria-hidden="true">
-  <div class="msg">The Murderer is choosing cards...</div>
+  <div class="msg">殺人犯がカードを選択中...</div>
 </div>
 
 <div id="helpBackdrop" class="help-pop-backdrop hidden" aria-hidden="true">
@@ -1200,18 +1275,17 @@ function loadNameFromLS(){
    ========================= */
 const ROLE_BASE_KEYS = new Set(['murderer','forensic','investigator']);
 const ROLE_DEFS = [
-  { key:'murderer',         name:'殺人犯',             text:"凶器カードと証拠カードをそれぞれ1枚ずつ選びます。\nバレないように立ち回りましょう。" },
-  { key:'forensic',         name:'法医学者',           text:"現場に残された情報から事件を推理します。\n真相にたどり着けるかが鍵です。" },
-  { key:'investigator',     name:'捜査官',             text:"証拠を集め、議論して犯人を突き止めます。\nチームで協力しましょう。" },
+  { key:'murderer',         name:'殺人犯',    　　　　 text:"凶器カードと証拠カードをそれぞれ1枚ずつ選ぶ。\n自分の正体がバレないように立ち回る。" },
+  { key:'forensic',         name:'法医学者',           text:"殺人犯が選んだカードを見て、捜査官に当ててもらわなければいけない。\n話してはいけない。" },
+  { key:'investigator',     name:'捜査官',             text:"法医学者のヒントを基に殺人犯が選んだ2枚のカードを当てる。\nチームで協力しよう。" },
+  { key:'madman',           name:'共犯者',             text:"殺人犯のサポートをします。" , exclusiveGroup:'madpair' },
+  { key:'cunning_madman',   name:'狡猾な共犯者',       text:"殺人犯のサポートをします。\n狡猾な共犯者も最初に自分のカードから2枚選ぶ。この組み合わせで宣言された時、殺人犯側の勝利。", exclusiveGroup:'madpair' },
+  { key:'witness',          name:'目撃者',             text:"殺人犯と共犯者がわかるが、どちらがどちらかまでは分からない。\n自分の正体が殺人犯にバレると、捜査官陣営の負け。" },
+  { key:'bodyguard',        name:'ボディガード',       text:"目撃者が誰か知っている。" },
 
-  { key:'madman',           name:'共犯者',             text:"（追加役職）殺人犯側の補助役。\n※共犯者 / 狡猾な共犯者 はどちらか1枚のみ。" , exclusiveGroup:'madpair' },
-  { key:'cunning_madman',   name:'狡猾な共犯者',       text:"（追加役職）より巧妙な補助役。\n※共犯者 / 狡猾な共犯者 はどちらか1枚のみ。", exclusiveGroup:'madpair' },
-  { key:'witness',          name:'目撃者',             text:"（追加役職）殺人犯と共犯者の正体カードを重ねて確認します。\nどちらがどちらかは分かりません。" },
-  { key:'bodyguard',        name:'ボディガード',       text:"（追加役職）目撃者の正体カードを確認できます。" },
-
-  { key:'special_police',   name:'検査技師',           text:"（追加役職）鑑識寄りの推理を支える役職（例）。" },
-  { key:'lawyer',           name:'顧問探偵',           text:"（追加役職）助言・推理に長けた役職（例）。" },
-  { key:'insider',          name:'インサイドマン',     text:"（追加役職）内部事情に通じる協力者役職（例）。" },
+  { key:'special_police',   name:'検査技師',           text:"" },
+  { key:'lawyer',           name:'顧問探偵',           text:"回答バッジを失う代わりに、正体を明かすことができる。※正体を透かした時点で回答バッジは失い、回答後に透かすことは禁止。" },
+  { key:'insider',          name:'インサイドマン',     text:"ラウンドの終わりにこっそり選んだプレイヤーの回答バッジを失わせる。" },
 ];
 const MURDER_SIDE_ROLES = new Set(['殺人犯', '共犯者', '狡猾な共犯者']);
 
@@ -1367,6 +1441,11 @@ const btnReplaceNo  = document.getElementById('btnReplaceNo');
 
 const discussionPop = document.getElementById('discussionPop');
 
+/* ★Answer Chip confirm pop DOM */
+const answerConfirmPop = document.getElementById('answerConfirmPop');
+const btnAnswerYes = document.getElementById('btnAnswerYes');
+const btnAnswerNo  = document.getElementById('btnAnswerNo');
+
 /* Scene picker DOM */
 const scenePickerBackdrop = document.getElementById('scenePickerBackdrop');
 const sceneGrid = document.getElementById('sceneGrid');
@@ -1508,6 +1587,76 @@ function refreshRoomLabels(){
   roomInfo.textContent = infoText;
   roomInfoLobby.textContent = infoText;
 }
+
+/* =========================
+   ★Answer Chip confirm pop
+   ========================= */
+let _answerPopOpen = false;
+
+function closeAnswerConfirmPop(){
+  if (!_answerPopOpen) return;
+  _answerPopOpen = false;
+  answerConfirmPop.classList.add('hidden');
+}
+
+function openAnswerConfirmPopAt(clientX, clientY){
+  // クリック位置の右下へ
+  const OFFSET = 8;
+  const x0 = clientX + OFFSET;
+  const y0 = clientY + OFFSET;
+
+  answerConfirmPop.classList.remove('hidden');
+  _answerPopOpen = true;
+
+  // 一旦置いてから、はみ出しを補正
+  answerConfirmPop.style.left = `${x0}px`;
+  answerConfirmPop.style.top  = `${y0}px`;
+
+  requestAnimationFrame(() => {
+    const pad = 8;
+    const r = answerConfirmPop.getBoundingClientRect();
+
+    const maxL = window.innerWidth  - r.width  - pad;
+    const maxT = window.innerHeight - r.height - pad;
+
+    const left = Math.max(pad, Math.min(x0, maxL));
+    const top  = Math.max(pad, Math.min(y0, maxT));
+
+    answerConfirmPop.style.left = `${left}px`;
+    answerConfirmPop.style.top  = `${top}px`;
+  });
+}
+
+/* ボタン動作 */
+btnAnswerNo.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeAnswerConfirmPop();
+});
+btnAnswerYes.addEventListener('click', (e) => {
+  e.stopPropagation();
+  // ★今回は要件が「表示＆閉じる」までなので、とりあえず閉じるだけ
+  closeAnswerConfirmPop();
+});
+
+/* 外クリックで閉じる（captureで確実に拾う） */
+document.addEventListener('pointerdown', (e) => {
+  if (!_answerPopOpen) return;
+
+  const t = e.target;
+  // ポップ内は無視
+  if (answerConfirmPop.contains(t)) return;
+
+  // クリック元が「自分の Answer Chip」なら open 側に任せる（ここでは閉じない）
+  if (t && t.closest && t.closest('img.answer-chip.clickable')) return;
+
+  closeAnswerConfirmPop();
+}, true);
+
+/* Escでも閉じる */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAnswerConfirmPop();
+});
+
 
 /* =========================
    ★ボタン列の位置更新（法医学者ドックの高さ分だけ持ち上げる）
@@ -1992,12 +2141,14 @@ function isChooserSelf(){
 function updateChoosingPopup(){
   const shouldShow =
     !!state._lastDealStamp &&
+    state._introDone &&         
     !isChooserSelf() &&
     !isSelectionsComplete();
 
   choosingPop.classList.toggle('show', shouldShow);
   choosingPop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
 }
+
 
 async function setHandSelection(roleKey, kind, idx, name){
   if (!state.roomCode) return;
@@ -2400,7 +2551,24 @@ async function setRoleSelected(key, on){
 function makeRoleCardBox({key, label, clickable, dimByDefault, selected}){
   const card = document.createElement('div');
   card.className = 'role-card';
-  card.textContent = 'CARD';
+
+  // ★ここがポイント：正体カード画像を入れる
+  const img = document.createElement('img');
+  img.src = `${label}.jpg`;     // 例：殺人犯.jpg / 法医学者.jpg / 共犯者.jpg ...
+  img.alt = label;
+  img.loading = 'eager';
+
+  // 画像が無い場合のフォールバック
+  const fallback = document.createElement('div');
+  fallback.className = 'role-fallback';
+  fallback.textContent = label;
+
+  img.onerror = () => {
+    card.classList.add('noimg');
+  };
+
+  card.appendChild(img);
+  card.appendChild(fallback);
 
   const isBase = ROLE_BASE_KEYS.has(key);
   const shouldDim = (!isBase && dimByDefault && !selected);
@@ -2412,6 +2580,7 @@ function makeRoleCardBox({key, label, clickable, dimByDefault, selected}){
     card.classList.add('clickable');
     card.setAttribute('role','button');
     card.setAttribute('aria-label', `${label} を${selected ? '解除' : '追加'}`);
+
     card.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!state.isHost) return;
@@ -2438,6 +2607,7 @@ function makeRoleCardBox({key, label, clickable, dimByDefault, selected}){
 
   return card;
 }
+
 
 function renderHelpList(){
   helpBody.innerHTML = '';
@@ -3273,10 +3443,19 @@ function makeRoleWrap(playerName, isMe, showFace, roleName, roleNamesToShow = nu
   tagRow.appendChild(nameTag);
 
   const chip = document.createElement('img');
-  chip.className = 'answer-chip';
+  chip.className = 'answer-chip' + (isMe ? ' clickable' : '');
   chip.src = 'answerchip.png';
   chip.alt = 'answerchip';
   chip.loading = 'eager';
+
+  if (isMe){
+    chip.style.pointerEvents = 'auto';
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAnswerConfirmPopAt(e.clientX, e.clientY);
+    });
+  }
+
   tagRow.appendChild(chip);
   wrap.appendChild(tagRow);
 
@@ -3563,17 +3742,19 @@ function buildPlayerBlock(p, isForensic){
     badgeGroup.appendChild(chip);
   }
 
-  if (!isForensic && started && showFace && document.body.classList.contains('two-col')){
-    const identityNames = getIdentityTagNames(roleName, revealRoleNames);
-    const identityText = getIdentityTagText(roleName, revealRoleNames);
-    if (identityText){
-      const tag = document.createElement('span');
-      const isMurderSide = identityNames.some((name) => MURDER_SIDE_ROLES.has(name));
-      tag.className = `identity-name-tag${isMurderSide ? ' murder-side' : ''}`;
-      tag.textContent = identityText;
-      badgeGroup.appendChild(tag);
-    }
+  const identityNames = getIdentityTagNames(roleName, revealRoleNames);
+  const identityText = getIdentityTagText(roleName, revealRoleNames);
+  const isMurderSide = identityNames.some((name) => MURDER_SIDE_ROLES.has(name));
+  const isTwoCol = document.body.classList.contains('two-col');
+  const shouldShowIdentityTag = started && identityText && (showFace || roleName === '法医学者');
+
+  if (shouldShowIdentityTag && (isTwoCol || isForensic || roleName === '法医学者')){
+    const tag = document.createElement('span');
+    tag.className = `identity-name-tag${isMurderSide ? ' murder-side' : ''}`;
+    tag.textContent = identityText;
+    badgeGroup.appendChild(tag);
   }
+
 
   block.appendChild(badgeGroup);
 
