@@ -401,13 +401,18 @@
     letter-spacing:.02em;
     padding: calc(2px * var(--uiScale)) calc(6px * var(--uiScale));
     border-radius:999px;
-    background:#f3f4f6;
-    border:1px solid #e5e7eb;
-    color:#111;
+    background:#1f2a54;
+    border:1px solid rgba(255,255,255,.2);
+    color:#fff;
     display:inline-flex;
     align-items:center;
     white-space:nowrap;
     flex:0 0 auto;
+  }
+  .identity-name-tag.murder-side{
+    background:#7a3a22;
+    border:1px solid rgba(0,0,0,.3);
+    color:#111;
   }
 
   .deal-area{
@@ -1200,14 +1205,16 @@ const ROLE_DEFS = [
   { key:'forensic',         name:'法医学者',           text:"現場に残された情報から事件を推理します。\n真相にたどり着けるかが鍵です。" },
   { key:'investigator',     name:'捜査官',             text:"証拠を集め、議論して犯人を突き止めます。\nチームで協力しましょう。" },
 
-  { key:'madman',           name:'Madman',             text:"（追加役職）殺人犯側の補助役。\n※Madman / Cunning Madman はどちらか1枚のみ。" , exclusiveGroup:'madpair' },
-  { key:'cunning_madman',   name:'Cunning Madman',     text:"（追加役職）より巧妙な補助役。\n※Madman / Cunning Madman はどちらか1枚のみ。", exclusiveGroup:'madpair' },
+  { key:'madman',           name:'共犯者',             text:"（追加役職）殺人犯側の補助役。\n※共犯者 / 狡猾な共犯者 はどちらか1枚のみ。" , exclusiveGroup:'madpair' },
+  { key:'cunning_madman',   name:'狡猾な共犯者',       text:"（追加役職）より巧妙な補助役。\n※共犯者 / 狡猾な共犯者 はどちらか1枚のみ。", exclusiveGroup:'madpair' },
   { key:'witness',          name:'目撃者',             text:"（追加役職）殺人犯と共犯者の正体カードを重ねて確認します。\nどちらがどちらかは分かりません。" },
   { key:'bodyguard',        name:'ボディガード',       text:"（追加役職）目撃者の正体カードを確認できます。" },
 
-  { key:'special_police',   name:'Special Police',     text:"（追加役職）強い推理/圧力を持つ警察側役職（例）。" },
-  { key:'lawyer',           name:'Lawyer',             text:"（追加役職）弁護・誘導に長けた役職（例）。" },
+  { key:'special_police',   name:'検査技師',           text:"（追加役職）鑑識寄りの推理を支える役職（例）。" },
+  { key:'lawyer',           name:'顧問探偵',           text:"（追加役職）助言・推理に長けた役職（例）。" },
+  { key:'insider',          name:'インサイドマン',     text:"（追加役職）内部事情に通じる協力者役職（例）。" },
 ];
+const MURDER_SIDE_ROLES = new Set(['殺人犯', '共犯者', '狡猾な共犯者']);
 
 /* =========================
    Scene Sets (5 options)
@@ -1946,11 +1953,11 @@ function getViewerRoleName(){
   return state.deal?.[state.userId]?.role || '';
 }
 function hasCunningRole(){
-  return !!findPlayerIdByRole("Cunning Madman");
+  return !!findPlayerIdByRole("狡猾な共犯者");
 }
 function getAccompliceRoleName(){
-  if (findPlayerIdByRole("Cunning Madman")) return "Cunning Madman";
-  if (findPlayerIdByRole("Madman")) return "Madman";
+  if (findPlayerIdByRole("狡猾な共犯者")) return "狡猾な共犯者";
+  if (findPlayerIdByRole("共犯者")) return "共犯者";
   return null;
 }
 function getSelection(roleKey, kind){
@@ -1980,7 +1987,7 @@ function isSelectionsComplete(){
 }
 function isChooserSelf(){
   const murdererId = findPlayerIdByRole("殺人犯");
-  const cunningId  = findPlayerIdByRole("Cunning Madman");
+  const cunningId  = findPlayerIdByRole("狡猾な共犯者");
   return (state.userId && (state.userId === murdererId || (cunningId && state.userId === cunningId)));
 }
 function updateChoosingPopup(){
@@ -2533,7 +2540,7 @@ function renderHelpList(){
     }
   }
 
-  for (const k of ['witness','bodyguard','special_police','lawyer']){
+  for (const k of ['witness','bodyguard','special_police','lawyer','insider']){
     const r = defByKey[k];
     if (!r) continue;
 
@@ -3296,10 +3303,13 @@ function makeRoleWrap(playerName, isMe, showFace, roleName, roleNamesToShow = nu
   return wrap;
 }
 
-function getIdentityTagText(roleName, revealRoleNames){
-  const names = Array.isArray(revealRoleNames) && revealRoleNames.length
+function getIdentityTagNames(roleName, revealRoleNames){
+  return Array.isArray(revealRoleNames) && revealRoleNames.length
     ? revealRoleNames
     : (roleName ? [roleName] : []);
+}
+function getIdentityTagText(roleName, revealRoleNames){
+  const names = getIdentityTagNames(roleName, revealRoleNames);
   if (!names.length) return '';
   return names.join(' / ');
 }
@@ -3406,12 +3416,12 @@ function makeClueCardEl(cardIdx, title, items){
    ========================= */
 function isPrivilegedViewerRole(){
   const r = getViewerRoleName();
-  return (r === '法医学者' || r === '殺人犯' || r === 'Madman' || r === 'Cunning Madman');
+  return (r === '法医学者' || r === '殺人犯' || r === '共犯者' || r === '狡猾な共犯者');
 }
 function getChooserRoleKeyForSelf(){
   const r = getViewerRoleName();
   if (r === '殺人犯') return 'murderer';
-  if (r === 'Cunning Madman') return 'cunning';
+  if (r === '狡猾な共犯者') return 'cunning';
   return null;
 }
 function shouldPulseForSelf(kind){
@@ -3430,7 +3440,7 @@ function applySelectionClassesToCard(cardEl, {viewerPrivileged, ownerId, kind, i
   if (!viewerPrivileged) return;
 
   const murdererId = findPlayerIdByRole('殺人犯');
-  const cunningId  = findPlayerIdByRole('Cunning Madman');
+  const cunningId  = findPlayerIdByRole('狡猾な共犯者');
 
   if (ownerId && murdererId && ownerId === murdererId){
     const mSel = getSelection('murderer', kind);
@@ -3555,10 +3565,12 @@ function buildPlayerBlock(p, isForensic){
   }
 
   if (!isForensic && started && showFace && document.body.classList.contains('two-col')){
+    const identityNames = getIdentityTagNames(roleName, revealRoleNames);
     const identityText = getIdentityTagText(roleName, revealRoleNames);
     if (identityText){
       const tag = document.createElement('span');
-      tag.className = 'identity-name-tag';
+      const isMurderSide = identityNames.some((name) => MURDER_SIDE_ROLES.has(name));
+      tag.className = `identity-name-tag${isMurderSide ? ' murder-side' : ''}`;
       tag.textContent = identityText;
       badgeGroup.appendChild(tag);
     }
@@ -3811,12 +3823,13 @@ function buildRoleAssignment(playerIds, roleOptions){
 
   // optional: assign at most 1 person each role card (simple model)
   const optList = [];
-  if (roleOptions?.madman) optList.push("Madman");
-  if (roleOptions?.cunning_madman) optList.push("Cunning Madman");
+  if (roleOptions?.madman) optList.push("共犯者");
+  if (roleOptions?.cunning_madman) optList.push("狡猾な共犯者");
   if (roleOptions?.witness) optList.push("目撃者");
   if (roleOptions?.bodyguard) optList.push("ボディガード");
-  if (roleOptions?.special_police) optList.push("Special Police");
-  if (roleOptions?.lawyer) optList.push("Lawyer");
+  if (roleOptions?.special_police) optList.push("検査技師");
+  if (roleOptions?.lawyer) optList.push("顧問探偵");
+  if (roleOptions?.insider) optList.push("インサイドマン");
 
   let pool = rest.slice();
   for (const r of optList){
