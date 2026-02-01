@@ -3142,6 +3142,23 @@ function makeCardEl(kind, name){
   fitNameTag(tag, lines);
   return d;
 }
+
+function makeMarkerCard(kind, imageName, altText){
+  const d = document.createElement('div');
+  d.className = `card ${kind} marker-card`;
+
+  const inner = document.createElement('div');
+  inner.className = 'card-inner';
+
+  const img = document.createElement('img');
+  img.src = `${imageName}.jpg`;
+  img.alt = altText;
+  img.loading = 'eager';
+
+  inner.appendChild(img);
+  d.appendChild(inner);
+  return d;
+}
 function makeRoleWrap(playerName, isMe, showFace, roleName){
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
@@ -3418,6 +3435,10 @@ function buildPlayerBlock(p, isForensic){
       weaponRow.appendChild(card);
     });
 
+    if (!document.body.classList.contains('two-col') && weapons.length){
+      weaponRow.appendChild(makeMarkerCard('weapon', 'weapon', 'weapon'));
+    }
+
     evids.forEach((name, idx) => {
       const card = makeCardEl('evidence', name);
 
@@ -3431,6 +3452,10 @@ function buildPlayerBlock(p, isForensic){
       }
       evidenceRow.appendChild(card);
     });
+
+    if (!document.body.classList.contains('two-col') && evids.length){
+      evidenceRow.appendChild(makeMarkerCard('evidence', 'evidence', 'evidence'));
+    }
 
     two.appendChild(weaponRow);
     two.appendChild(evidenceRow);
