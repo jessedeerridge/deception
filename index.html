@@ -392,6 +392,12 @@
   .answer-chip.clickable{
     cursor:pointer;
   }
+  .answer-chip.used{
+    opacity:.2;
+  }
+  .answer-chip.clickable.used{
+    cursor:default;
+  }
 
   #roomInfoLobby, #lobby h2, #lobby p {display:none;}
 
@@ -946,6 +952,46 @@
     text-overflow:ellipsis;
     text-align:center;
   }
+  .answering-pop{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:605;
+    pointer-events:none;
+  }
+  .answering-pop.show{ display:flex; }
+  .answering-pop.host{ pointer-events:auto; }
+  .answering-pop-inner{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    transform:translateY(-8px);
+  }
+  .answering-pop-message{
+    background:rgba(0,0,0,.92);
+    color:#fff;
+    font-weight:900;
+    padding:12px 16px;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    white-space:nowrap;
+    max-width: calc(100vw - 40px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    text-align:center;
+  }
+  .answering-pop-actions{
+    display:flex;
+    gap:8px;
+    background:rgba(255,255,255,.96);
+    border:1px solid rgba(0,0,0,.18);
+    border-radius:12px;
+    padding:8px 12px;
+    box-shadow:0 12px 28px rgba(0,0,0,.25);
+  }
 
   .replace-backdrop{
     position:fixed; inset:0;
@@ -1212,6 +1258,16 @@
   <div class="msg">殺人犯がカードを選択中...</div>
 </div>
 
+<div id="answeringPop" class="answering-pop" aria-hidden="true">
+  <div class="answering-pop-inner">
+    <div id="answeringPopMessage" class="answering-pop-message">（プレイヤー名）が回答中...</div>
+    <div id="answeringHostActions" class="answering-pop-actions hidden">
+      <button id="btnAnswerCorrect" class="btn primary small">正解</button>
+      <button id="btnAnswerIncorrect" class="btn ghost small">不正解</button>
+    </div>
+  </div>
+</div>
+
 <div id="helpBackdrop" class="help-pop-backdrop hidden" aria-hidden="true">
   <div class="help-pop" role="dialog" aria-modal="true" aria-label="正体カード一覧">
     <div class="help-pop-head">
@@ -1340,6 +1396,9 @@ const state = {
 
   sceneSelection: null, // { setIdx:number, by:string, at:number }
   _lastSeenResetAt: 0,
+
+  answerUsed: {},
+  answering: null,
 };
 
 /* デッキ */
@@ -1445,6 +1504,11 @@ const discussionPop = document.getElementById('discussionPop');
 const answerConfirmPop = document.getElementById('answerConfirmPop');
 const btnAnswerYes = document.getElementById('btnAnswerYes');
 const btnAnswerNo  = document.getElementById('btnAnswerNo');
+const answeringPop = document.getElementById('answeringPop');
+const answeringPopMessage = document.getElementById('answeringPopMessage');
+const answeringHostActions = document.getElementById('answeringHostActions');
+const btnAnswerCorrect = document.getElementById('btnAnswerCorrect');
+const btnAnswerIncorrect = document.getElementById('btnAnswerIncorrect');
 
 /* Scene picker DOM */
 const scenePickerBackdrop = document.getElementById('scenePickerBackdrop');
@@ -1593,6 +1657,11 @@ function refreshRoomLabels(){
    ========================= */
 let _answerPopOpen = false;
 
+function isAnswerUsed(playerId){
+  if (!playerId) return false;
+  return !!(state.answerUsed && state.answerUsed[playerId]);
+}
+
 function closeAnswerConfirmPop(){
   if (!_answerPopOpen) return;
   _answerPopOpen = false;
@@ -1634,7 +1703,7 @@ btnAnswerNo.addEventListener('click', (e) => {
 });
 btnAnswerYes.addEventListener('click', (e) => {
   e.stopPropagation();
-  // ★今回は要件が「表示＆閉じる」までなので、とりあえず閉じるだけ
+  submitAnswerRequest().catch(()=>{});
   closeAnswerConfirmPop();
 });
 
@@ -1655,6 +1724,48 @@ document.addEventListener('pointerdown', (e) => {
 /* Escでも閉じる */
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeAnswerConfirmPop();
+});
+
+function updateAnsweringPopup(){
+  const answering = state.answering || null;
+  const shouldShow = !!answering;
+  const name = answering?.playerName || (answering?.playerId ? findPlayerNameById(answering.playerId) : '名無し');
+  answeringPopMessage.textContent = `（${name}）が回答中...`;
+  answeringPop.classList.toggle('show', shouldShow);
+  answeringPop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+  answeringPop.classList.toggle('host', state.isHost && shouldShow);
+  answeringHostActions.classList.toggle('hidden', !(state.isHost && shouldShow));
+}
+
+async function submitAnswerRequest(){
+  if (!state.roomCode || !state.userId) return;
+  if (isAnswerUsed(state.userId)) return;
+  if (state.answering) return;
+
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+  const payload = {
+    [`answerUsed/${state.userId}`]: true,
+    answering: {
+      playerId: state.userId,
+      playerName: state.userName || '名無し',
+      at: Date.now()
+    }
+  };
+  await update(roomRef, payload);
+}
+
+async function resolveAnswer(){
+  if (!state.roomCode || !state.isHost) return;
+  await set(ref(db, `rooms/${state.roomCode}/answering`), null).catch(()=>{});
+}
+
+btnAnswerCorrect.addEventListener('click', (e) => {
+  e.stopPropagation();
+  resolveAnswer().catch(()=>{});
+});
+btnAnswerIncorrect.addEventListener('click', (e) => {
+  e.stopPropagation();
+  resolveAnswer().catch(()=>{});
 });
 
 
@@ -1729,6 +1840,7 @@ function subscribeHostState(){
     const hostId = snap.val();
     state.isHost = (hostId === state.userId);
     updateHostUI();
+    updateAnsweringPopup();
     syncSeatUI().catch(()=>{});
   });
 }
@@ -1898,6 +2010,20 @@ function subscribeSceneSelection(){
     }
   });
 }
+function subscribeAnswering(){
+  const aRef = ref(db, `rooms/${state.roomCode}/answering`);
+  onValue(aRef, snap => {
+    state.answering = snap.val() || null;
+    updateAnsweringPopup();
+  });
+}
+function subscribeAnswerUsed(){
+  const uRef = ref(db, `rooms/${state.roomCode}/answerUsed`);
+  onValue(uRef, snap => {
+    state.answerUsed = snap.val() || {};
+    renderPlayersVertical(latestPlayers);
+  });
+}
 
 /* =========================
    ★追加：リセット時のローカル同期（未着席へ）
@@ -1921,9 +2047,12 @@ function handleRoomResetLocal(resetAt){
   state.forensicDiscarded = {};
   state.sceneSelection = null;
   state._introDone = true;
+  state.answerUsed = {};
+  state.answering = null;
 
   renderPlayersVertical(latestPlayers);
   updateChoosingPopup();
+  updateAnsweringPopup();
   syncSeatUI().catch(()=>{});
 }
 
@@ -3430,7 +3559,7 @@ function makeRoleCardFace(roleName){
   role.appendChild(cn);
   return role;
 }
-function makeRoleWrap(playerName, isMe, showFace, roleName, roleNamesToShow = null){
+function makeRoleWrap(playerId, playerName, isMe, showFace, roleName, roleNamesToShow = null){
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
 
@@ -3443,7 +3572,8 @@ function makeRoleWrap(playerName, isMe, showFace, roleName, roleNamesToShow = nu
   tagRow.appendChild(nameTag);
 
   const chip = document.createElement('img');
-  chip.className = 'answer-chip' + (isMe ? ' clickable' : '');
+  const chipUsed = isAnswerUsed(playerId);
+  chip.className = 'answer-chip' + (isMe && !chipUsed ? ' clickable' : '') + (chipUsed ? ' used' : '');
   chip.src = 'answerchip.png';
   chip.alt = 'answerchip';
   chip.loading = 'eager';
@@ -3452,6 +3582,7 @@ function makeRoleWrap(playerName, isMe, showFace, roleName, roleNamesToShow = nu
     chip.style.pointerEvents = 'auto';
     chip.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (isAnswerUsed(state.userId) || state.answering) return;
       openAnswerConfirmPopAt(e.clientX, e.clientY);
     });
   }
@@ -3735,7 +3866,7 @@ function buildPlayerBlock(p, isForensic){
 
   if (!isForensic){
     const chip = document.createElement('img');
-    chip.className = 'answer-chip';
+    chip.className = 'answer-chip' + (isAnswerUsed(p.id) ? ' used' : '');
     chip.src = 'answerchip.png';
     chip.alt = 'answerchip';
     chip.loading = 'eager';
@@ -3759,7 +3890,7 @@ function buildPlayerBlock(p, isForensic){
   block.appendChild(badgeGroup);
 
   if (!isForensic){
-    area.appendChild(makeRoleWrap(p.name, isMe, showFace, roleName, revealRoleNames));
+    area.appendChild(makeRoleWrap(p.id, p.name, isMe, showFace, roleName, revealRoleNames));
 
     const two = document.createElement('div');
     two.className = 'two-rows';
@@ -3901,6 +4032,8 @@ async function joinRoom(){
   subscribeSelections();
   subscribePhase();
   subscribeSceneSelection();
+  subscribeAnswering();
+  subscribeAnswerUsed();
 
   // seat UI
   await syncSeatUI().catch(()=>{});
@@ -3972,6 +4105,8 @@ btnResetRoom.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${code}/forensicReplacePreview`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/forensicDiscarded`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/sceneSelection`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/answerUsed`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/answering`)).catch(()=>{});
   await set(ref(db, `rooms/${code}/discussionStage`), 1).catch(()=>{});
 
   // kick everyone seats
