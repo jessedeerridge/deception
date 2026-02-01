@@ -998,6 +998,144 @@
   }
   .answering-pop-actions[hidden]{ display:none; }
 
+  .witness-selecting-pop{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:612;
+    pointer-events:none;
+  }
+  .witness-selecting-pop.show{ display:flex; }
+  .witness-selecting-pop .msg{
+    background:rgba(0,0,0,.92);
+    color:#fff;
+    font-weight:900;
+    padding:12px 16px;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    white-space:nowrap;
+    max-width: calc(100vw - 40px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    text-align:center;
+  }
+
+  .witness-murderer-pop{
+    position:fixed;
+    left:50%;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:612;
+    pointer-events:none;
+  }
+  .witness-murderer-pop.show{ display:flex; }
+  .witness-murderer-pop .msg{
+    background:rgba(0,0,0,.92);
+    color:#fff;
+    font-weight:900;
+    padding:12px 16px;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    white-space:nowrap;
+    max-width: calc(100vw - 40px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    text-align:center;
+  }
+
+  .witness-reveal-overlay{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,.55);
+    z-index:640;
+    pointer-events:none;
+  }
+  .witness-reveal-overlay.show{ display:flex; }
+  .witness-reveal-inner{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+  }
+  .witness-reveal-name{
+    background:rgba(0,0,0,.78);
+    color:#fff;
+    font-weight:900;
+    padding:8px 14px;
+    border-radius:999px;
+    box-shadow:0 12px 28px rgba(0,0,0,.35);
+    max-width: calc(100vw - 60px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .witness-reveal-card{
+    width:180px;
+    height:260px;
+    position:relative;
+    border-radius:16px;
+    overflow:hidden;
+    background:#fff;
+    box-shadow:0 22px 48px rgba(0,0,0,.45);
+    transform:translateZ(0);
+    --card-image: none;
+  }
+  .witness-reveal-card img,
+  .witness-reveal-card .witness-card-half{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+  }
+  .witness-reveal-card img{
+    object-fit:cover;
+    display:block;
+    opacity:0;
+  }
+  .witness-reveal-card .witness-card-half{
+    background-image:var(--card-image);
+    background-size:cover;
+    background-position:center;
+    opacity:0;
+  }
+  .witness-reveal-card.is-hit img{ opacity:0; }
+  .witness-reveal-card.is-hit .witness-card-half{ opacity:1; }
+  .witness-reveal-card.is-miss img{ opacity:1; }
+  .witness-reveal-card.is-miss .witness-card-half{ opacity:0; }
+
+  .witness-reveal-card.animate.is-hit .witness-card-half.top{
+    clip-path: polygon(0 0, 100% 0, 100% 46%, 0 62%);
+    animation: witnessSplitTop 1.6s ease forwards;
+  }
+  .witness-reveal-card.animate.is-hit .witness-card-half.bottom{
+    clip-path: polygon(0 62%, 100% 46%, 100% 100%, 0 100%);
+    animation: witnessSplitBottom 1.6s ease forwards;
+  }
+  .witness-reveal-card.animate.is-miss img{
+    animation: witnessDrop 2.1s ease forwards;
+  }
+  @keyframes witnessSplitTop{
+    0%{ transform:translate3d(0,0,0) rotate(0deg); }
+    100%{ transform:translate3d(-18px,-70px,0) rotate(-8deg); }
+  }
+  @keyframes witnessSplitBottom{
+    0%{ transform:translate3d(0,0,0) rotate(0deg); }
+    100%{ transform:translate3d(18px,80px,0) rotate(9deg); }
+  }
+  @keyframes witnessDrop{
+    0%{ transform:translate3d(0,0,0) rotate(0deg); opacity:1; }
+    70%{ opacity:1; }
+    100%{ transform:translate3d(20px,280px,0) rotate(12deg); opacity:0; }
+  }
+
   .replace-backdrop{
     position:fixed; inset:0;
     background:rgba(0,0,0,.35);
@@ -1083,6 +1221,18 @@
     outline: 3px solid #facc15;
     outline-offset: 2px;
     z-index: 5;
+  }
+  .role-wrap.witness-candidate{
+    cursor:pointer;
+  }
+  .role-wrap.witness-candidate .role-slot,
+  .role-wrap.witness-candidate .role-stack{
+    animation: witnessPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes witnessPulse{
+    0%{ transform:scale(1); }
+    50%{ transform:scale(1.06); }
+    100%{ transform:scale(1); }
   }
   .player-block.picking{ z-index: 30; }
   .player-block.picking .row4{ overflow: visible !important; }
@@ -1263,6 +1413,25 @@
   <div class="msg">殺人犯がカードを選択中...</div>
 </div>
 
+<div id="witnessSelectingPop" class="witness-selecting-pop" aria-hidden="true">
+  <div class="msg">殺人犯が目撃者を選択中...</div>
+</div>
+
+<div id="witnessMurdererPop" class="witness-murderer-pop" aria-hidden="true">
+  <div class="msg">目撃者だと思う人物を選んでください。</div>
+</div>
+
+<div id="witnessRevealOverlay" class="witness-reveal-overlay" aria-hidden="true">
+  <div class="witness-reveal-inner">
+    <div id="witnessRevealName" class="witness-reveal-name">（プレイヤー名）</div>
+    <div id="witnessRevealCard" class="witness-reveal-card">
+      <img id="witnessRevealImg" src="" alt="" loading="eager">
+      <div class="witness-card-half top" aria-hidden="true"></div>
+      <div class="witness-card-half bottom" aria-hidden="true"></div>
+    </div>
+  </div>
+</div>
+
 <div id="answeringPop" class="answering-pop" aria-hidden="true">
   <div class="answering-pop-inner">
     <div id="answeringPopMessage" class="answering-pop-message">（プレイヤー名）が回答中...</div>
@@ -1349,6 +1518,7 @@ const ROLE_DEFS = [
   { key:'insider',          name:'インサイドマン',     text:"ラウンドの終わりにこっそり選んだプレイヤーの回答バッジを失わせる。" },
 ];
 const MURDER_SIDE_ROLES = new Set(['殺人犯', '共犯者', '狡猾な共犯者']);
+const WITNESS_REVEAL_DURATION_MS = 2300;
 
 /* =========================
    Scene Sets (5 options)
@@ -1404,6 +1574,12 @@ const state = {
 
   answerUsed: {},
   answering: null,
+  answerResult: null,
+  witnessPick: null,
+  forceSingleColumn: false,
+  _lastWitnessPickKey: null,
+  _revealTimer: null,
+  _witnessOverlayTimer: null,
 };
 
 /* デッキ */
@@ -1514,6 +1690,12 @@ const answeringPopMessage = document.getElementById('answeringPopMessage');
 const answeringHostActions = document.getElementById('answeringHostActions');
 const btnAnswerCorrect = document.getElementById('btnAnswerCorrect');
 const btnAnswerIncorrect = document.getElementById('btnAnswerIncorrect');
+const witnessSelectingPop = document.getElementById('witnessSelectingPop');
+const witnessMurdererPop = document.getElementById('witnessMurdererPop');
+const witnessRevealOverlay = document.getElementById('witnessRevealOverlay');
+const witnessRevealName = document.getElementById('witnessRevealName');
+const witnessRevealCard = document.getElementById('witnessRevealCard');
+const witnessRevealImg = document.getElementById('witnessRevealImg');
 
 /* Scene picker DOM */
 const scenePickerBackdrop = document.getElementById('scenePickerBackdrop');
@@ -1742,6 +1924,76 @@ function updateAnsweringPopup(){
   answeringHostActions.hidden = !(state.isHost && shouldShow);
 }
 
+function updateAnswerResolutionUI(){
+  const status = getAnswerStatus();
+  const isMurderer = getViewerRoleName() === '殺人犯';
+  const selecting = status === 'witness_select';
+
+  witnessSelectingPop.classList.toggle('show', selecting && !isMurderer);
+  witnessSelectingPop.setAttribute('aria-hidden', selecting && !isMurderer ? 'false' : 'true');
+  witnessMurdererPop.classList.toggle('show', selecting && isMurderer);
+  witnessMurdererPop.setAttribute('aria-hidden', selecting && isMurderer ? 'false' : 'true');
+
+  const forceSingle = shouldForceSingleColumn();
+  state.forceSingleColumn = forceSingle;
+  if (forceSingle && document.body.classList.contains('two-col')){
+    setTwoColMode(false);
+  }
+  updateViewToggleVisibility();
+
+  if (state._revealTimer){
+    clearTimeout(state._revealTimer);
+    state._revealTimer = null;
+  }
+  if (status === 'witness_reveal'){
+    const revealAt = Number(state.answerResult?.revealAt || 0);
+    if (revealAt){
+      const delay = Math.max(0, revealAt - Date.now());
+      state._revealTimer = setTimeout(() => {
+        renderPlayersVertical(latestPlayers);
+        updateViewToggleVisibility();
+      }, delay + 30);
+    }
+  }
+
+  renderPlayersVertical(latestPlayers);
+}
+
+function playWitnessReveal(){
+  const pick = state.witnessPick;
+  if (!pick) return;
+  const revealAt = Number(state.answerResult?.revealAt || 0);
+  if (revealAt && Date.now() > revealAt + 300){
+    return;
+  }
+  const key = `${pick.at || 0}|${pick.targetId || ''}`;
+  if (state._lastWitnessPickKey === key) return;
+  state._lastWitnessPickKey = key;
+
+  const roleName = String(pick.targetRole || '');
+  const imgSrc = roleName ? `${roleName}.jpg` : '';
+  witnessRevealName.textContent = `（${pick.targetName || '名無し'}）`;
+  witnessRevealImg.src = imgSrc;
+  witnessRevealImg.alt = roleName || 'identity';
+  witnessRevealCard.style.setProperty('--card-image', imgSrc ? `url('${imgSrc}')` : 'none');
+
+  witnessRevealCard.classList.remove('is-hit', 'is-miss', 'animate');
+  witnessRevealCard.classList.add(pick.isWitness ? 'is-hit' : 'is-miss');
+  void witnessRevealCard.offsetWidth;
+  witnessRevealCard.classList.add('animate');
+
+  witnessRevealOverlay.classList.add('show');
+  witnessRevealOverlay.setAttribute('aria-hidden', 'false');
+
+  if (state._witnessOverlayTimer){
+    clearTimeout(state._witnessOverlayTimer);
+  }
+  state._witnessOverlayTimer = setTimeout(() => {
+    witnessRevealOverlay.classList.remove('show');
+    witnessRevealOverlay.setAttribute('aria-hidden', 'true');
+  }, WITNESS_REVEAL_DURATION_MS + 200);
+}
+
 async function submitAnswerRequest(){
   if (!state.roomCode || !state.userId) return;
   if (isAnswerUsed(state.userId)) return;
@@ -1759,18 +2011,29 @@ async function submitAnswerRequest(){
   await update(roomRef, payload);
 }
 
-async function resolveAnswer(){
+async function resolveAnswer(isCorrect){
   if (!state.roomCode || !state.isHost) return;
-  await set(ref(db, `rooms/${state.roomCode}/answering`), null).catch(()=>{});
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+
+  const updates = { answering: null };
+  if (isCorrect){
+    updates.answerResult = {
+      status: hasWitnessRole() ? 'witness_select' : 'revealed',
+      at: Date.now(),
+      by: state.userId
+    };
+    updates.witnessPick = null;
+  }
+  await update(roomRef, updates).catch(()=>{});
 }
 
 btnAnswerCorrect.addEventListener('click', (e) => {
   e.stopPropagation();
-  resolveAnswer().catch(()=>{});
+  resolveAnswer(true).catch(()=>{});
 });
 btnAnswerIncorrect.addEventListener('click', (e) => {
   e.stopPropagation();
-  resolveAnswer().catch(()=>{});
+  resolveAnswer(false).catch(()=>{});
 });
 
 
@@ -1793,11 +2056,17 @@ function updateBottomControlsPosition(){
   document.documentElement.style.setProperty('--forensicDockH', `${h}px`);
 }
 
+function updateViewToggleVisibility(){
+  const joined = joinBox.classList.contains('hidden');
+  const forceSingle = shouldForceSingleColumn();
+  viewToggleBtn.style.display = (joined && !forceSingle) ? '' : 'none';
+}
+
 function updateHostUI(){
   refreshRoomLabels();
 
   const joined = joinBox.classList.contains('hidden');
-  viewToggleBtn.style.display = joined ? '' : 'none';
+  updateViewToggleVisibility();
 
   bottomControls.classList.toggle('hidden', !joined);
 
@@ -2029,6 +2298,26 @@ function subscribeAnswerUsed(){
     renderPlayersVertical(latestPlayers);
   });
 }
+function subscribeAnswerResult(){
+  const rRef = ref(db, `rooms/${state.roomCode}/answerResult`);
+  onValue(rRef, snap => {
+    state.answerResult = snap.val() || null;
+    updateAnswerResolutionUI();
+  });
+}
+function subscribeWitnessPick(){
+  const wRef = ref(db, `rooms/${state.roomCode}/witnessPick`);
+  onValue(wRef, snap => {
+    state.witnessPick = snap.val() || null;
+    if (state.witnessPick){
+      playWitnessReveal();
+    } else {
+      witnessRevealOverlay.classList.remove('show');
+      witnessRevealOverlay.setAttribute('aria-hidden', 'true');
+    }
+    renderPlayersVertical(latestPlayers);
+  });
+}
 
 /* =========================
    ★追加：リセット時のローカル同期（未着席へ）
@@ -2054,10 +2343,30 @@ function handleRoomResetLocal(resetAt){
   state._introDone = true;
   state.answerUsed = {};
   state.answering = null;
+  state.answerResult = null;
+  state.witnessPick = null;
+  state.forceSingleColumn = false;
+  state._lastWitnessPickKey = null;
+  if (state._revealTimer){
+    clearTimeout(state._revealTimer);
+    state._revealTimer = null;
+  }
+  if (state._witnessOverlayTimer){
+    clearTimeout(state._witnessOverlayTimer);
+    state._witnessOverlayTimer = null;
+  }
+
+  witnessSelectingPop.classList.remove('show');
+  witnessSelectingPop.setAttribute('aria-hidden', 'true');
+  witnessMurdererPop.classList.remove('show');
+  witnessMurdererPop.setAttribute('aria-hidden', 'true');
+  witnessRevealOverlay.classList.remove('show');
+  witnessRevealOverlay.setAttribute('aria-hidden', 'true');
 
   renderPlayersVertical(latestPlayers);
   updateChoosingPopup();
   updateAnsweringPopup();
+  updateAnswerResolutionUI();
   syncSeatUI().catch(()=>{});
 }
 
@@ -2242,6 +2551,37 @@ function getAccompliceRoleName(){
   if (findPlayerIdByRole("共犯者")) return "共犯者";
   return null;
 }
+function hasWitnessRole(){
+  return !!findPlayerIdByRole("目撃者");
+}
+function getAnswerStatus(){
+  return state.answerResult?.status || null;
+}
+function shouldForceSingleColumn(){
+  const status = getAnswerStatus();
+  return status === 'revealed' || status === 'witness_select' || status === 'witness_reveal';
+}
+function shouldShowSelectionsForAll(){
+  return shouldForceSingleColumn();
+}
+function shouldRevealAllRoles(){
+  const status = getAnswerStatus();
+  if (status === 'revealed') return true;
+  if (status === 'witness_reveal'){
+    const revealAt = Number(state.answerResult?.revealAt || 0);
+    return !!(revealAt && Date.now() >= revealAt);
+  }
+  return false;
+}
+function isWitnessSelectionActive(){
+  return getAnswerStatus() === 'witness_select';
+}
+function isWitnessRevealActive(){
+  return getAnswerStatus() === 'witness_reveal';
+}
+function isWitnessCandidateRole(roleName){
+  return !['法医学者', '殺人犯', '共犯者', '狡猾な共犯者'].includes(roleName || '');
+}
 function getSelection(roleKey, kind){
   const obj = state.selections || {};
   const s = obj?.[roleKey]?.[kind] || null;
@@ -2281,6 +2621,36 @@ function updateChoosingPopup(){
 
   choosingPop.classList.toggle('show', shouldShow);
   choosingPop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+}
+
+async function submitWitnessPick(targetId){
+  if (!state.roomCode || !targetId) return;
+  if (getViewerRoleName() !== '殺人犯') return;
+  if (!isWitnessSelectionActive()) return;
+  if (state.witnessPick) return;
+
+  const targetDeal = state.deal?.[targetId];
+  if (!targetDeal) return;
+  const targetRole = String(targetDeal.role || '');
+  const targetName = findPlayerNameById(targetId);
+  const isWitness = targetRole === '目撃者';
+  const revealAt = Date.now() + WITNESS_REVEAL_DURATION_MS;
+
+  await update(ref(db, `rooms/${state.roomCode}`), {
+    witnessPick: {
+      targetId,
+      targetName,
+      targetRole,
+      isWitness,
+      at: Date.now(),
+      by: state.userId
+    },
+    answerResult: {
+      ...(state.answerResult || {}),
+      status: 'witness_reveal',
+      revealAt
+    }
+  }).catch(()=>{});
 }
 
 
@@ -2955,6 +3325,7 @@ function setTwoColMode(on){
   setTwoColMode(saved);
 })();
 viewToggleBtn.addEventListener('click', () => {
+  if (shouldForceSingleColumn()) return;
   const on = !document.body.classList.contains('two-col');
   setTwoColMode(on);
 });
@@ -3834,6 +4205,7 @@ function buildPlayerBlock(p, isForensic){
 
   let showFace = false;
   let revealRoleNames = null;
+  const revealAll = shouldRevealAllRoles();
   if (started){
     showFace = isMe;
     if (state.isForensicViewer) showFace = true; // 法医学者視点は全員の役職を表に
@@ -3858,6 +4230,10 @@ function buildPlayerBlock(p, isForensic){
     if (viewerRole === 'ボディガード' && roleName === '目撃者'){
       showFace = true;
       revealRoleNames = ['目撃者'];
+    }
+    if (revealAll){
+      showFace = true;
+      revealRoleNames = null;
     }
   }
 
@@ -3892,7 +4268,7 @@ function buildPlayerBlock(p, isForensic){
   const identityText = getIdentityTagText(roleName, revealRoleNames);
   const isMurderSide = identityNames.some((name) => MURDER_SIDE_ROLES.has(name));
   const isTwoCol = document.body.classList.contains('two-col');
-  const shouldShowIdentityTag = started && identityText && (showFace || roleName === '法医学者');
+  const shouldShowIdentityTag = started && identityText && (showFace || roleName === '法医学者' || revealAll);
 
   if (shouldShowIdentityTag && (isTwoCol || isForensic || roleName === '法医学者')){
     const tag = document.createElement('span');
@@ -3905,7 +4281,17 @@ function buildPlayerBlock(p, isForensic){
   block.appendChild(badgeGroup);
 
   if (!isForensic){
-    area.appendChild(makeRoleWrap(p.id, p.name, isMe, showFace, roleName, revealRoleNames));
+    const roleWrap = makeRoleWrap(p.id, p.name, isMe, showFace, roleName, revealRoleNames);
+    const canPickWitness = isWitnessSelectionActive() && getViewerRoleName() === '殺人犯';
+    const isCandidate = canPickWitness && isWitnessCandidateRole(roleName);
+    if (isCandidate && !state.witnessPick){
+      roleWrap.classList.add('witness-candidate');
+      roleWrap.addEventListener('click', (e) => {
+        e.stopPropagation();
+        submitWitnessPick(p.id);
+      });
+    }
+    area.appendChild(roleWrap);
 
     const two = document.createElement('div');
     two.className = 'two-rows';
@@ -3916,7 +4302,7 @@ function buildPlayerBlock(p, isForensic){
     const evidenceRow = document.createElement('div');
     evidenceRow.className = 'row4 evidence-row';
 
-    const viewerPriv = isPrivilegedViewerRole();
+    const viewerPriv = isPrivilegedViewerRole() || shouldShowSelectionsForAll();
     const roleKeySelf = getChooserRoleKeyForSelf();
 
     const weapons = (myDeal?.weapons && Array.isArray(myDeal.weapons)) ? myDeal.weapons : [];
@@ -4049,6 +4435,8 @@ async function joinRoom(){
   subscribeSceneSelection();
   subscribeAnswering();
   subscribeAnswerUsed();
+  subscribeAnswerResult();
+  subscribeWitnessPick();
 
   // seat UI
   await syncSeatUI().catch(()=>{});
@@ -4122,6 +4510,8 @@ btnResetRoom.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${code}/sceneSelection`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/answerUsed`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/answering`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/answerResult`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/witnessPick`)).catch(()=>{});
   await set(ref(db, `rooms/${code}/discussionStage`), 1).catch(()=>{});
 
   // kick everyone seats
@@ -4227,6 +4617,8 @@ btnGameStart.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${state.roomCode}/sceneSelection`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/answerUsed`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/answering`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/answerResult`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/witnessPick`)).catch(()=>{});
   await set(ref(db, `rooms/${state.roomCode}/discussionStage`), 1).catch(()=>{});
 });
 
