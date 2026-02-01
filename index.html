@@ -3,10 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>テンプレ</title>
+<title>ディセプション</title>
 <style>
   html, body{height:100%; overflow:hidden;}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
+
+  /* ★スクロールバーを非表示（スクロールは可能） */
+  *{ scrollbar-width: none; }
+  *{ -ms-overflow-style: none; }
+  *::-webkit-scrollbar{ width:0; height:0; }
 
   header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #eee; position:sticky; top:0; z-index:400; background:#fff;}
   h1{margin:0;font-size:18px;}
@@ -23,97 +28,256 @@
   main{
     position:relative;
     height:calc(100vh - 60px);
-    overflow:auto;
-    overflow-x:hidden; /* 横スクロール防止 */
-    -webkit-overflow-scrolling:touch;
+    overflow:visible;
     background-size:cover;
     background-position:center;
     background-repeat:no-repeat;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
   main.prejoin{ background-image:url('maemain.jpg'); }
   main.joined{ background-image:url('decemain.jpg'); }
 
-/* =========================
-   右上：表示切替ボタン（1列 / 2列）
-   ★ボタン入れ替え版★
-   ・正方形 / 枠なし / ぼかし無し / 透ける / 角丸
-   ・図形（入れ替え）：
-     1列ボタン = 左右2列×3段（6本）
-     2列ボタン = 中央に3本（縦に3つ）
-   ========================= */
-.view-toggle-btn{
-  position:fixed;
-  top:72px;
-  right:14px;
+  #lobby.entered{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    height:100%;
+    min-height:0;
+    padding-bottom:0;
+    overflow:visible;
+  }
+  .players-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom: 10px;
+    position:relative;
+    z-index:1;
+  }
 
-  width:38px;
-  height:38px;
+  .view-toggle-btn{
+    position:fixed;
+    top:72px;
+    right:14px;
+    width:38px;
+    height:38px;
+    border-radius:10px;
+    border:none;
+    outline:none;
+    background:rgba(255,255,255,.18);
+    box-shadow:0 10px 24px rgba(0,0,0,.18);
+    z-index:410;
+    cursor:pointer;
+    display:grid;
+    place-items:center;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    transition: transform .12s ease, background .18s ease, box-shadow .18s ease;
+  }
+  .view-toggle-btn:hover{ background:rgba(255,255,255,.28); }
+  .view-toggle-btn:active{ transform:translateY(1px) scale(.98); }
 
-  border-radius:10px;
-  border:none;
-  outline:none;
+  .view-toggle-btn .icon{
+    width:22px;
+    height:22px;
+    position:relative;
+    border:none;
+    background:transparent;
+  }
+  .view-toggle-btn .icon::before{
+    content:"";
+    position:absolute;
+    inset:3px;
+    background:
+      linear-gradient(rgba(0,0,0,.78) 0 18%, transparent 18% 41%,
+                      rgba(0,0,0,.78) 41% 59%, transparent 59% 82%,
+                      rgba(0,0,0,.78) 82% 100%),
+      linear-gradient(rgba(0,0,0,.78) 0 18%, transparent 18% 41%,
+                      rgba(0,0,0,.78) 41% 59%, transparent 59% 82%,
+                      rgba(0,0,0,.78) 82% 100%);
+    background-size: 46% 100%, 46% 100%;
+    background-position: left top, right top;
+    background-repeat:no-repeat;
+  }
 
-  background:rgba(255,255,255,.18);
-  backdrop-filter:none;
-  -webkit-backdrop-filter:none;
+  body.two-col .view-toggle-btn{
+    background:rgba(17,17,17,.18);
+    box-shadow:0 12px 28px rgba(0,0,0,.28);
+  }
+  body.two-col .view-toggle-btn:hover{ background:rgba(17,17,17,.28); }
 
-  box-shadow:0 10px 24px rgba(0,0,0,.18);
-  z-index:410;
-  cursor:pointer;
-  display:grid;
-  place-items:center;
-  user-select:none;
-  -webkit-tap-highlight-color:transparent;
-  transition: transform .12s ease, background .18s ease, box-shadow .18s ease;
-}
-.view-toggle-btn:hover{ background:rgba(255,255,255,.28); }
-.view-toggle-btn:active{ transform:translateY(1px) scale(.98); }
+  body.two-col .view-toggle-btn .icon::before{
+    background:
+      linear-gradient(rgba(255,255,255,.92) 0 18%, transparent 18% 41%,
+                      rgba(255,255,255,.92) 41% 59%, transparent 59% 82%,
+                      rgba(255,255,255,.92) 82% 100%);
+    background-size: 70% 100%;
+    background-position: center top;
+    background-repeat:no-repeat;
+  }
 
-.view-toggle-btn .icon{
-  width:22px;
-  height:22px;
-  position:relative;
-  border:none;
-  background:transparent;
-}
+  /* =========================
+     ★Settings/Help row：要件対応
+     - 法医学者テーブルがある：その直上に固定
+     - ない：画面最下部に通常固定
+     ※どちらも「画面（viewport）基準」で固定し、JSで法医学者ドックの高さ分だけ持ち上げる
+     ========================= */
+  :root{ --forensicDockH: 0px; }
 
-/* ★1列ボタン（デフォルト）＝ 6本（左右2列×3段） */
-.view-toggle-btn .icon::before{
-  content:"";
-  position:absolute;
-  inset:3px;
-  background:
-    linear-gradient(rgba(0,0,0,.78) 0 18%, transparent 18% 41%,
-                    rgba(0,0,0,.78) 41% 59%, transparent 59% 82%,
-                    rgba(0,0,0,.78) 82% 100%),
-    linear-gradient(rgba(0,0,0,.78) 0 18%, transparent 18% 41%,
-                    rgba(0,0,0,.78) 41% 59%, transparent 59% 82%,
-                    rgba(0,0,0,.78) 82% 100%);
-  background-size: 46% 100%, 46% 100%;
-  background-position: left top, right top;
-  background-repeat:no-repeat;
-}
+  .bottom-controls{
+    position:fixed;
+    left:50%;
+    transform:translateX(-50%);
+    bottom: calc(var(--forensicDockH, 0px) + 8px + env(safe-area-inset-bottom));
+    width:min(980px, calc(100%));
+    padding: 6px 2px 6px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    z-index:260;
+    pointer-events:none;
+  }
+  .bottom-controls.hidden{ display:none; }
 
-/* 2列モード：ONっぽい見た目 */
-body.two-col .view-toggle-btn{
-  background:rgba(17,17,17,.18);
-  box-shadow:0 12px 28px rgba(0,0,0,.28);
-}
-body.two-col .view-toggle-btn:hover{ background:rgba(17,17,17,.28); }
+  .dock-btn{
+    width:44px;
+    height:44px;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.12);
+    background:rgba(255,255,255,.70);
+    box-shadow:0 10px 24px rgba(0,0,0,.18);
+    display:grid;
+    place-items:center;
+    cursor:pointer;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    line-height:1;
+    font-weight:900;
+    font-size:20px;
+    opacity:.86;
+    transition: transform .12s ease, opacity .18s ease, background .18s ease;
+    pointer-events:auto;
+  }
+  .dock-btn:hover{ opacity:.96; background:rgba(255,255,255,.28); }
+  .dock-btn:active{ transform:translateY(1px) scale(.98); }
 
-/* ★2列ボタン＝ 中央に3本 */
-body.two-col .view-toggle-btn .icon::before{
-  background:
-    linear-gradient(rgba(255,255,255,.92) 0 18%, transparent 18% 41%,
-                    rgba(255,255,255,.92) 41% 59%, transparent 59% 82%,
-                    rgba(255,255,255,.92) 82% 100%);
-  background-size: 70% 100%;
-  background-position: center top;
-  background-repeat:no-repeat;
-}
+  .help-btn{ display:none; }
+  .help-btn.visible{ display:grid; }
+  .host-settings-btn{ display:none; }
+  .host-settings-btn.visible{ display:grid; }
 
+  /* ★要件：Helpボタンは1列/2列どちらも黒塗り＆少し透過（Settingsはそのまま） */
+  #helpBtn{
+    background:rgba(0,0,0,.46);
+    border:1px solid rgba(255,255,255,.18);
+    color:#fff;
+    opacity:.92;
+  }
+  #helpBtn:hover{ background:rgba(0,0,0,.56); }
+  body.two-col #helpBtn{
+    background:rgba(0,0,0,.46);
+    border:1px solid rgba(255,255,255,.18);
+    color:#fff;
+  }
+  body.two-col #helpBtn:hover{ background:rgba(0,0,0,.56); }
 
-  /* 着席ポップ */
+  .help-pop-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.35);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    padding:16px;
+    z-index:310;
+  }
+  .help-pop-backdrop.hidden{ display:none; }
+
+  .help-pop{
+    width:min(560px, 100%);
+    max-height:min(75vh, 680px);
+    background:#fff;
+    border:1px solid rgba(0,0,0,.10);
+    border-radius:16px;
+    box-shadow:0 18px 40px rgba(0,0,0,.28);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .help-pop-head{
+    height:48px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:0 12px;
+    border-bottom:1px solid #eee;
+    flex:0 0 auto;
+  }
+  .help-pop-title{
+    font-weight:900;
+    font-size:14px;
+    letter-spacing:.02em;
+  }
+  .help-pop-close{
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    cursor:pointer;
+    font-size:18px;
+    line-height:1;
+  }
+  .help-pop-body{
+    padding:12px;
+    overflow:auto;
+    max-height:calc(75vh - 48px);
+  }
+
+  .role-row{
+    display:flex;
+    gap:12px;
+    padding:10px 0;
+    border-bottom:1px solid #f1f1f1;
+  }
+  .role-row:last-child{ border-bottom:none; }
+
+  .role-card{
+    width:72px;
+    height:108px;
+    border-radius:12px;
+    border:1px solid #e5e7eb;
+    background:linear-gradient(135deg,#fff,#f6f6f6);
+    flex:0 0 auto;
+    display:grid;
+    place-items:center;
+    font-weight:900;
+    color:#111;
+    box-shadow:0 6px 16px rgba(0,0,0,.10);
+    position:relative;
+    overflow:hidden;
+  }
+  .role-card.dimmed{ opacity:.32; filter:grayscale(.15); }
+  .role-card.selected{ opacity:1; filter:none; }
+  .role-card.clickable{
+    cursor:pointer;
+    transition: transform .12s ease, box-shadow .18s ease, opacity .18s ease;
+  }
+  .role-card.clickable:hover{ transform:translateY(-1px); box-shadow:0 10px 22px rgba(0,0,0,.14); }
+  .role-card.clickable:active{ transform:translateY(0px) scale(.99); }
+
+  .role-card-pair{ display:flex; gap:10px; flex:0 0 auto; align-items:flex-start; }
+  .role-desc{ flex:1 1 auto; min-width:0; }
+  .role-desc .name{ font-weight:900; margin:0 0 4px; font-size:14px; }
+  .role-desc .text{ margin:0; font-size:13px; line-height:1.6; white-space:pre-wrap; opacity:.95; }
+
+  .pair-desc{ display:flex; flex-direction:column; gap:10px; }
+  .pair-desc .pair-item{ border-left:3px solid #111; padding-left:10px; }
+
   .seat-pop{
     position:fixed;left:50%;bottom:10px;transform:translateX(-50%);
     background:orange;border:1px solid #eee;border-radius:12px;
@@ -152,13 +316,6 @@ body.two-col .view-toggle-btn .icon::before{
   .dialog-box p{margin:0 0 12px;font-size:14px;line-height:1.6;}
   .dialog-buttons{display:flex;justify-content:flex-end;gap:8px;}
 
-  .host-settings-btn{
-    position:fixed;right:16px;bottom:16px;width:44px;height:44px;border-radius:50%;
-    border:1px solid #ddd;background:#fff;box-shadow:0 8px 20px rgba(0,0,0,.18);
-    display:none;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:230;
-  }
-  .host-settings-btn.visible{display:flex;}
-
   .start-pop{
     position:fixed;right:16px;bottom:72px;background:#fff;border:1px solid #ddd;border-radius:12px;
     box-shadow:0 12px 28px rgba(0,0,0,.16);padding:10px 12px;z-index:240;min-width:260px;
@@ -171,27 +328,15 @@ body.two-col .view-toggle-btn .icon::before{
   .start-pop-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;flex-wrap:wrap;}
 
   #roomInfoLobby, #lobby h2, #lobby p {display:none;}
-  #lobby.entered{
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-  }
 
-  /* =========================
-     プレイヤー縦並び（＋2列）
-     ========================= */
   .players-column{
     width:min(980px, calc(100%));
     margin:0 auto;
     display:flex;
     flex-direction:column;
     gap:10px;
-
-    /* ★ JSで自動計算して入れる（1列は 1） */
     --uiScale: 1;
   }
-
-  /* 2列モード：テーブルを2列グリッドに */
   body.two-col .players-column{
     display:grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -207,12 +352,11 @@ body.two-col .view-toggle-btn .icon::before{
     padding: calc(5px * var(--uiScale));
     position:relative;
     min-width:0;
+    overflow: visible;
   }
 
-  /* 2列モード：正体カードは非表示 */
   body.two-col .role-wrap{ display:none; }
 
-  /* 2列モード：テーブル右上内にネームタグ */
   .player-badge{
     position:absolute;
     top: calc(6px * var(--uiScale));
@@ -232,6 +376,7 @@ body.two-col .view-toggle-btn .icon::before{
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
+    z-index: 10;
   }
   body.two-col .player-badge{ display:block; }
   body.two-col .player-badge.me{ background:#111; color:#fff; border-color:#111; }
@@ -239,11 +384,11 @@ body.two-col .view-toggle-btn .icon::before{
   .deal-area{
     display:flex;
     gap: calc(10px * var(--uiScale));
-    align-items:center;
+    align-items:flex-start;
     min-width:0;
+    overflow: visible;
   }
 
-  /* 正体カード */
   .role-wrap{
     display:flex;
     flex-direction:column;
@@ -297,40 +442,52 @@ body.two-col .view-toggle-btn .icon::before{
   .two-rows{
     display:flex;
     flex-direction:column;
-    gap: calc(2px * var(--uiScale));
+    gap: calc(6px * var(--uiScale));
     flex:1 1 auto;
     min-width:0;
+    overflow:visible;
   }
 
   .row4{
     display:flex;
     gap: calc(2px * var(--uiScale));
     flex-wrap:nowrap;
-    overflow:auto;          /* 1列モードでは横スクロールOK */
-    padding-bottom:2px;
+    overflow-x:auto;
+    overflow-y:visible;
+    padding: 4px 8px 4px;
     min-width:0;
+    position:relative;
+    z-index:1;
   }
-
-  /* ★ 2列モード：折り返しなし + 横スクロールなし（必ず縮小で収める） */
   body.two-col .row4{
-    overflow:hidden;        /* 横スクロール禁止 */
-    flex-wrap:nowrap;       /* 折り返し禁止 */
-    padding-top: calc(2px * var(--uiScale)); /* 右上ネームタグと干渉しにくく */
+    overflow-x:hidden;
+    overflow-y:visible;
+    flex-wrap:nowrap;
+    padding-top: calc(6px * var(--uiScale));
   }
 
-  /* カード */
   .card{
     width: calc(60px * var(--uiScale));
     height: calc(90px * var(--uiScale));
     border-radius: calc(10px * var(--uiScale));
-    background:#fff;
+    background:transparent;
     box-shadow:0 6px 16px rgba(0,0,0,.15);
     position:relative;
-    overflow:hidden;
+    overflow:visible;
     flex:0 0 auto;
+    transform-origin:center center;
+    will-change:transform;
   }
-  .card.weapon{ border: calc(3px * var(--uiScale)) solid #3b575b; }
-  .card.evidence{ border: calc(3px * var(--uiScale)) solid #925f48; }
+  .card .card-inner{
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    overflow:hidden;
+    background:#fff;
+  }
+  .card.weapon .card-inner{ border: calc(3px * var(--uiScale)) solid #3b575b; }
+  .card.evidence .card-inner{ border: calc(3px * var(--uiScale)) solid #925f48; }
+
   .card img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; background:#fff; }
 
   .name-tag{
@@ -354,18 +511,472 @@ body.two-col .view-toggle-btn .icon::before{
   .weapon .name-tag{ background:#3b575b; }
   .evidence .name-tag{ background:#925f48; }
 
-/* ★ 2列モード：右上ネームタグが隠れないよう上に余白を確保 */
-body.two-col .player-block{
-  padding-top: calc(26px * var(--uiScale)); /* ★追加 */
-}
+  body.two-col .player-block{ padding-top: calc(26px * var(--uiScale)); }
 
+  .forensic-dock{
+    flex:0 0 auto;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    position:relative;
+    z-index:200;
+    overflow:visible;
+  }
+  .forensic-dock.hidden{ display:none; }
 
+  .forensic-divider{
+    height:1px;
+    width:min(980px, calc(100%));
+    margin: 2px auto 2px;
+    background: rgba(0,0,0,.28);
+    box-shadow: 0 1px 0 rgba(255,255,255,.25) inset;
+    border-radius: 999px;
+  }
+
+  .forensic-container{
+    width:min(980px, calc(100%));
+    margin:0 auto;
+    --uiScale: 1;
+    overflow:visible;
+  }
+  .forensic-container .player-block{
+    --uiScale: 1;
+    padding-top: 26px;
+    overflow:visible;
+  }
+  .forensic-container .player-badge{ display:block !important; }
+  .forensic-container .role-wrap{ display:none !important; }
+  .forensic-container .row4{ overflow:hidden !important; }
+
+  .clue-row{
+    display:flex;
+    gap:5px;
+    align-items:stretch;
+
+    overflow-x:auto;
+    overflow-y:visible;
+
+    --liftPad: 80px;
+    padding: calc(2px + var(--liftPad)) 2px 0;
+    margin-top: calc(-1 * var(--liftPad));
+
+    -webkit-overflow-scrolling:touch;
+
+    margin-left: -22px;
+    padding-left: 24px;
+
+    position:relative;
+    z-index:1;
+  }
+
+  .clue-card{
+    flex:0 0 auto;
+    width:65px;
+    height:140px;
+    border-radius:14px;
+    background:#6b3f2a;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 10px 24px rgba(0,0,0,.22);
+
+    --padY: 6px;
+    padding:0px 2px var(--padY);
+    display:flex;
+    flex-direction:column;
+
+    --titleH: 30px;
+
+    touch-action:none;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+
+    position: relative;
+    will-change: transform;
+    overflow:visible;
+  }
+
+  /* ★Sceneカード：未選択時は透明＆アイテム非表示（タイトルのみ） */
+  .clue-card.scene-card.scene-unselected{
+    background:rgba(255,255,255,.14);
+    border:1px dashed rgba(255,255,255,.38);
+    color:#fff;
+  }
+  .clue-card.scene-card.scene-unselected .clue-title{
+    border-bottom:1px solid rgba(255,255,255,.18);
+  }
+  .clue-card.scene-card{
+    cursor:pointer;
+  }
+
+  .clue-card.preview-lift{
+    z-index: 9990;
+    transform: translateY(-50px);
+    box-shadow:0 22px 60px rgba(0,0,0,.45);
+  }
+
+  .clue-hole{
+    flex: 0 0 auto;
+    width: 65px;
+    height: 140px;
+    border-radius: 14px;
+    background: transparent;
+    border: 1px solid transparent;
+    box-shadow: none;
+  }
+
+  .clue-card.draggable{ outline: 2px solid rgba(255,255,255,.18); }
+  .clue-card.dragging{
+    box-shadow:0 18px 46px rgba(0,0,0,.35);
+    transform: translate3d(0,0,0);
+    z-index:9999;
+  }
+  .clue-card.discard-open{ z-index: 9997; }
+
+  .clue-title{
+    font-weight:900;
+    font-size:13px;
+    letter-spacing:.02em;
+
+    height: var(--titleH);
+    box-sizing:border-box;
+    border-bottom:1px solid rgba(255,255,255,.22);
+
+    padding:2px 2px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+
+    line-height:1.10;
+    overflow:hidden;
+  }
+  .clue-title .clue-title-text{
+    width:100%;
+    display:block;
+    text-align:center;
+    word-break:break-word;
+  }
+  .clue-title.is-1line .clue-title-text{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .clue-title.is-2line .clue-title-text{
+    white-space:normal;
+    display:-webkit-box;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    overflow:hidden;
+  }
+
+  .clue-items{
+    flex:1 1 auto;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding-top: var(--padY);
+    justify-content:center;
+    align-items:center;
+
+    font-weight:800;
+    font-size:11px;
+    line-height:1.05;
+    opacity:.98;
+    width:100%;
+  }
+
+  .clue-item{
+    position:relative;
+    width:100%;
+    height: 14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    user-select:none;
+  }
+
+  .clue-item-text{
+    display:block;
+    max-width:100%;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    text-align:center;
+    pointer-events:none;
+  }
+
+  .clue-pick{
+    position:absolute;
+    left:2px;
+    top:50%;
+    transform:translateY(-50%);
+    width:12px;
+    height:12px;
+    display:grid;
+    place-items:center;
+    z-index:2;
+    overflow:visible;
+  }
+
+  .clue-dotbtn{
+    width:12px;
+    height:12px;
+    border-radius:999px;
+    border:2px dotted rgba(255,255,255,.55);
+    opacity:.75;
+    background:transparent;
+    padding:0;
+    margin:0;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .clue-dotbtn:active{ transform:scale(.96); }
+  .clue-dotbtn:focus{ outline:none; }
+  .clue-chip.overlap{ opacity:.5; }
+
+  .clue-chip{
+    width:38px;
+    height:38px;
+    display:block;
+    object-fit:contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.25));
+    pointer-events:none;
+    position:absolute;
+    left:-20px;
+    top:-24px;
+    transform:none;
+    z-index:3;
+  }
+
+  .center-intro{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,.20);
+    z-index:600;
+    pointer-events:none;
+  }
+  .center-intro.show{ display:flex; }
+  .center-intro-inner{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    transform:translateY(-8px);
+  }
+  .center-intro-pop{
+    background:rgba(0,0,0,.92);
+    color:#fff;
+    font-weight:900;
+    padding:10px 14px;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    white-space:nowrap;
+    max-width: calc(100vw - 40px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    text-align:center;
+  }
+  .center-intro-card{
+    width:84px;
+    height:126px;
+    border-radius:12px;
+    background:#fff;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    border:2px solid rgba(255,255,255,.55);
+    overflow:hidden;
+  }
+  .center-intro-card img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+    background:#fff;
+  }
+
+  .choosing-pop{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:590;
+    pointer-events:none;
+  }
+  .choosing-pop.show{ display:flex; }
+  .choosing-pop .msg{
+    background:rgba(0,0,0,.92);
+    color:#fff;
+    font-weight:900;
+    padding:12px 16px;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    white-space:nowrap;
+    max-width: calc(100vw - 40px);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    text-align:center;
+  }
+
+  .replace-backdrop{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.35);
+    display:flex;align-items:center;justify-content:center;
+    z-index:650;
+  }
+  .replace-backdrop.hidden{display:none;}
+  .replace-box{
+    background:#fff;border-radius:12px;padding:16px 18px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    max-width:360px;width:calc(100% - 40px);
+  }
+  .replace-box p{margin:0 0 12px;font-size:14px;line-height:1.6;}
+  .replace-buttons{display:flex;justify-content:flex-end;gap:8px;}
+
+  .discussion-pop{
+    position:fixed;
+    top:50%;
+    left:-60%;
+    transform:translateY(-50%);
+    background:rgba(0,0,0,.92);
+    color:#fff;
+    font-weight:900;
+    padding:12px 16px;
+    border-radius:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    white-space:nowrap;
+    z-index:700;
+    pointer-events:none;
+    opacity:0;
+  }
+  .discussion-pop.show{
+    animation: discussionFly 2.35s cubic-bezier(.22,.84,.44,1) forwards;
+  }
+  @keyframes discussionFly{
+    0%   { left:-60%; opacity:0; transform:translateY(-50%) translateX(0); }
+    18%  { opacity:1; }
+    45%  { left:50%; transform:translateY(-50%) translateX(-50%); opacity:1; }
+    78%  { left:50%; transform:translateY(-50%) translateX(-50%); opacity:1; }
+    100% { left:160%; transform:translateY(-50%) translateX(-50%); opacity:0; }
+  }
+
+  .swap-up{ animation: swapUp .28s cubic-bezier(.22,.84,.44,1) forwards; }
+  @keyframes swapUp{ from{ transform: translateY(0); opacity:1; } to{ transform: translateY(-22px); opacity:0; } }
+  .swap-in{ animation: swapIn .32s cubic-bezier(.22,.84,.44,1) forwards; }
+  @keyframes swapIn{ from{ transform: translateY(24px); opacity:0; } to{ transform: translateY(0); opacity:1; } }
+
+  .discard-overlay{
+    position:absolute;
+    right:6px;
+    top:-14px;
+    z-index:9998;
+    pointer-events:auto;
+    overflow:visible;
+  }
+  .discard-overlay .discard-mini{
+    transform: scale(.92);
+    transform-origin: top right;
+    filter: drop-shadow(0 12px 24px rgba(0,0,0,.30));
+  }
+  .discard-overlay .discard-mini .clue-card{ cursor:default; }
+
+  @keyframes handPulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  .card.selectable{
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition: transform .12s ease, box-shadow .18s ease;
+  }
+  .card.selectable:active{ transform: scale(.99); }
+  .card.pulse{
+    animation: handPulse 0.85s ease-in-out infinite;
+  }
+  .card.pick-murderer{
+    outline: 3px solid #ef4444;
+    outline-offset: 2px;
+    z-index: 5;
+  }
+  .card.pick-cunning{
+    outline: 3px solid #facc15;
+    outline-offset: 2px;
+    z-index: 5;
+  }
+  .player-block.picking{ z-index: 30; }
+  .player-block.picking .row4{ overflow: visible !important; }
+
+  /* =========================
+     ★Scene picker (5 cards) overlay
+     ========================= */
+  .scene-picker-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.35);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:720;
+    padding:16px;
+  }
+  .scene-picker-backdrop.show{ display:flex; }
+
+  /* ★要件：Scene一覧の「テーブル/背景」が白ではなく、黒っぽく透過 */
+  .scene-picker{
+    width:min(420px, 100%);
+    background:rgba(0,0,0,.55);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:16px;
+    box-shadow:0 18px 44px rgba(0,0,0,.45);
+    padding:12px;
+    backdrop-filter: blur(6px);
+  }
+  .scene-grid{
+    display:grid;
+    gap:10px;
+    grid-template-columns: repeat(3, 65px);
+    justify-content:center;
+  }
+  .scene-grid .scene-option{
+    width:65px;
+    height:140px;
+  }
+  .scene-grid-wrap{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    align-items:center;
+  }
+  .scene-hint{
+    font-size:12px;
+    font-weight:900;
+    opacity:.90;
+    text-align:center;
+    line-height:1.4;
+    color:#fff;
+  }
+  .scene-option.clickable{
+    cursor:pointer;
+    transform-origin:center;
+    transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
+  }
+  .scene-option.clickable:hover{
+    transform: translateY(-1px);
+    box-shadow:0 18px 40px rgba(0,0,0,.45);
+  }
+  .scene-option.selected{
+    outline:3px solid rgba(255,255,255,.85);
+    outline-offset: 2px;
+  }
 </style>
 </head>
 
 <body>
 <header>
-  <h1>テンプレ</h1>
+  <h1>ディセプション</h1>
   <div style="display:flex;align-items:center;gap:6px;">
     <div class="small" id="roomInfo"></div>
     <button class="btn ghost" id="copyLinkBtn">COPY</button>
@@ -388,11 +999,25 @@ body.two-col .player-block{
     <div id="roomInfoLobby" style="margin-bottom:8px;"></div>
     <p>ここにテーブルや情報が表示されます。</p>
 
-    <div class="players-column" id="playersColumn"></div>
+    <div id="playersScroll" class="players-scroll">
+      <div class="players-column" id="playersColumn"></div>
+    </div>
+
+    <div id="forensicDock" class="forensic-dock hidden">
+      <div class="forensic-divider" aria-hidden="true"></div>
+      <div class="forensic-container" id="forensicColumn"></div>
+    </div>
+  </div>
+
+  <!-- ★ボタン列は main 配下で固定（viewport基準） -->
+  <div id="bottomControls" class="bottom-controls hidden">
+    <button id="helpBtn" class="dock-btn help-btn" title="Help / 正体カード一覧" aria-label="Help / 正体カード一覧">？</button>
+    <button id="hostSettingsBtn" class="dock-btn host-settings-btn" title="Settings" aria-label="Settings">⚙</button>
   </div>
 </main>
 
-<div id="hostSelectingPop" class="host-selecting-pop hidden">ホストが人数を選択中</div>
+<!-- 他プレイヤー：人数選択中はこれだけ -->
+<div id="hostSelectingPop" class="host-selecting-pop hidden">The host is selecting...</div>
 
 <div id="seatPop" class="seat-pop hidden">
   <div class="row"><label>席を選択</label><div id="seatTabs" class="tabs"></div></div>
@@ -411,7 +1036,17 @@ body.two-col .player-block{
   </div>
 </div>
 
-<button id="hostSettingsBtn" class="host-settings-btn" title="設定">⚙</button>
+<div id="replaceBackdrop" class="replace-backdrop hidden" aria-hidden="true">
+  <div class="replace-box" role="dialog" aria-modal="true" aria-label="カード差し替え確認">
+    <p id="replaceMessage">「（タイトル）」のカードを変えますか。</p>
+    <div class="replace-buttons">
+      <button class="btn ghost" id="btnReplaceNo">いいえ</button>
+      <button class="btn primary" id="btnReplaceYes">はい</button>
+    </div>
+  </div>
+</div>
+
+<div id="discussionPop" class="discussion-pop" aria-hidden="true">第2議論</div>
 
 <div id="startPop" class="start-pop hidden">
   <div class="start-pop-header">
@@ -428,6 +1063,39 @@ body.two-col .player-block{
   </div>
 </div>
 
+<div id="centerIntro" class="center-intro">
+  <div class="center-intro-inner">
+    <div id="centerIntroPop" class="center-intro-pop">法医学者は「??」です。</div>
+    <div class="center-intro-card">
+      <img src="法医学者.jpg" alt="法医学者" loading="eager">
+    </div>
+  </div>
+</div>
+
+<div id="choosingPop" class="choosing-pop" aria-hidden="true">
+  <div class="msg">The Murderer is choosing cards...</div>
+</div>
+
+<div id="helpBackdrop" class="help-pop-backdrop hidden" aria-hidden="true">
+  <div class="help-pop" role="dialog" aria-modal="true" aria-label="正体カード一覧">
+    <div class="help-pop-head">
+      <div class="help-pop-title">Identity Cards</div>
+      <button id="btnHelpClose" class="help-pop-close" aria-label="閉じる">×</button>
+    </div>
+    <div class="help-pop-body" id="helpBody"></div>
+  </div>
+</div>
+
+<!-- Scene picker overlay -->
+<div id="scenePickerBackdrop" class="scene-picker-backdrop" aria-hidden="true">
+  <div class="scene-picker" role="dialog" aria-modal="true" aria-label="Scene 選択">
+    <div class="scene-grid-wrap">
+      <div id="sceneHint" class="scene-hint">Scene</div>
+      <div id="sceneGrid" class="scene-grid"></div>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
@@ -436,7 +1104,7 @@ import {
 
 /* Firebase */
 const firebaseConfig = {
-  apiKey: "AIzaSyAMeKfMoHt9qOQ2VuUBpkrKuei7yGBbEi8",
+  apiKey: "AIzaSyAMeKfMoHt9qO2VuUBpkrKuei7yGBbEi8",
   authDomain: "cheesetheft-fd52f.firebaseapp.com",
   databaseURL: "https://cheesetheft-fd52f-default-rtdb.firebaseio.com",
   projectId: "cheesetheft-fd52f",
@@ -452,6 +1120,47 @@ const db  = getDatabase(app);
 const savedUserId = sessionStorage.getItem('bbUserId') || crypto.randomUUID();
 sessionStorage.setItem('bbUserId', savedUserId);
 
+/* ★席タブ誤表示対策 */
+const LS_WATCH_MODE = 'bbWatchMode';
+function setWatchMode(on){ localStorage.setItem(LS_WATCH_MODE, on ? '1' : '0'); }
+function isWatchMode(){ return localStorage.getItem(LS_WATCH_MODE) === '1'; }
+
+/* ★自動名前入力 */
+const LS_NAME = 'bbUserName';
+function saveNameToLS(name){
+  try{ localStorage.setItem(LS_NAME, String(name||'').slice(0,4)); }catch{}
+}
+function loadNameFromLS(){
+  try{ return (localStorage.getItem(LS_NAME) || '').slice(0,4); }catch{ return ''; }
+}
+
+/* =========================
+   Identity Cards / Role Options
+   ========================= */
+const ROLE_BASE_KEYS = new Set(['murderer','forensic','investigator']);
+const ROLE_DEFS = [
+  { key:'murderer',         name:'殺人犯',             text:"凶器カードと証拠カードをそれぞれ1枚ずつ選びます。\nバレないように立ち回りましょう。" },
+  { key:'forensic',         name:'法医学者',           text:"現場に残された情報から事件を推理します。\n真相にたどり着けるかが鍵です。" },
+  { key:'investigator',     name:'捜査官',             text:"証拠を集め、議論して犯人を突き止めます。\nチームで協力しましょう。" },
+
+  { key:'madman',           name:'Madman',             text:"（追加役職）殺人犯側の補助役。\n※Madman / Cunning Madman はどちらか1枚のみ。" , exclusiveGroup:'madpair' },
+  { key:'cunning_madman',   name:'Cunning Madman',     text:"（追加役職）より巧妙な補助役。\n※Madman / Cunning Madman はどちらか1枚のみ。", exclusiveGroup:'madpair' },
+
+  { key:'special_police',   name:'Special Police',     text:"（追加役職）強い推理/圧力を持つ警察側役職（例）。" },
+  { key:'lawyer',           name:'Lawyer',             text:"（追加役職）弁護・誘導に長けた役職（例）。" },
+];
+
+/* =========================
+   Scene Sets (5 options)
+   ========================= */
+const SCENE_SETS = [
+  { title:"現場", items:["リビング","寝室","倉庫","浴室","キッチン","バルコニー"] },
+  { title:"現場", items:["別荘","公園","スーパー","学校","森林","銀行"] },
+  { title:"現場", items:["遊び場","教室","寮","食堂","エレベーター","トイレ"] },
+  { title:"現場", items:["酒場","本屋","レストラン","ホテル","病院","建設現場"] },
+  { title:"現場", items:["公共施設","ビジネス","住宅","屋外","隔離された屋外","不明"] },
+];
+
 /* 状態 */
 const state = {
   userId: savedUserId,
@@ -461,14 +1170,82 @@ const state = {
   isHost: false,
   room: {},
   deal: {},
+  _lastDealStamp: 0,
+
+  forensicPick: {},
+  forensicClues: null,
+  discussionStage: 1,
+  isForensicViewer: false,
+  _playersLoaded: false,
+
+  _pendingReplace: null,
+  _drag: null,
+
+  _swapAnimating: false,
+  _swapAnimEndAt: 0,
+  _swapIgnorePickCards: new Set(),
+  _lastSwapEventKey: null,
+  _pendingRenderAfterSwap: false,
+
+  forensicReplacePreview: null,
+  forensicDiscarded: {},
+
+  _discardOverlays: [],
+  _discardOverlayCloseBound: false,
+
+  roleOptions: {},
+
+  selections: {},
+  phase: null,
+  _introDone: true,
+
+  sceneSelection: null, // { setIdx:number, by:string, at:number }
+  _lastSeenResetAt: 0,
 };
 
+/* デッキ */
 const WEAPONS = [
 "液体薬品","鉢植え","仕事","ヘッドフォン","密室","バリアロープ","こて","石膏像","レンガ","スカーフ","汚れた手","ビニール袋","なた","ダガー","踏みつけ","ワイン","マッチ","狂犬","注射","針金","ノド切り","ムチ","素手","農薬","違法N\\ドラッグ","線路","レーザーN\\シャーク","竹やり","血液N\\サンプル","スカーフ","過剰摂取","四肢切断","毒サソリ","ウイルス","放火","噛みつき","ガムテープ","釣り針","灯油","トロフィー","ハンマー","折りたたみN\\イス","機械","カミソリ","タオル","枕","水銀","毒グモ","爆薬","蜜蜂","錠剤","斧","溺死","電流","鮫","ベルト","生き埋め","ハサミ","放射線","粉末薬","鎖","ゲーム機","松葉杖","チェーンソー","セール看板","ウェブカメラ","セメント","手術","サックス","失血","スケート靴","石","煙","燭台","消火器","バット","電線","パンチ","毒ヘビ","餓死","バイク","毒針","ライター","拳銃","ヒ素","アメーバ","アルコール","ロープ","ダンベル","レーザー銃","押し出し","狙撃","レンチ","伝染病","電気警棒","ミキサー","肉切り包丁","汚水","キック","ナイフとN\\フォーク","化学薬品","火薬","スポーク","毒ガス","硫酸","カッター","鉄パイプ","ドリル"
 ];
 
 const EVIDENCES = [
 "ヘルメット","IDカード","注射器","制服","ノート","ハイヒール","トランプ","ピーナッツ","ジュース","ファン","動画サイト","調味料","インク","蒸しパン","懐中電灯","サングラス","リモコン","社員証","麻雀牌","光N\\ファイバー","インターネットN\\ケーブル","エアコン","サイン","ネックレス","文書","懐中時計","携帯電話","カップ","ダイアモンド","アンティーク","メニュー","地図","血","羽根ペン","野菜","針と糸","ベル","スイッチ","密書","借用証書","ランプ","腕時計","フルート","ゴム印","釘","綿","しるし","雑誌","ストッキング","顔パック","ゴキブリ","ケーキ","コンピューター","蚊取りN\\線香","チップ","トランク","数字","レインN\\コート","ファックス","パン","ジャケット","電球","ビデオカメラ","油絵","イヤリング","粉末","錠前","アイロン","迷路","蟻","ヘアピン","メモ","食材","模型","帽子","ぬいぐるみ","骨","鍵","ブリーフ","タトゥー","名刺","爪","手錠","バッジ","紳士帽","贈り物","手袋","犬の毛","変換プラグ","新聞","三脚","ヘッドフォン","包帯","写真","招待状","香水","茶葉","のり","お面","弾丸","口紅","招待状","ティッシュ","グラフィティ","人形","トランプ","スナック菓子","蚊","海老","切手","宝石","卵","紙幣","砂","ハンガー","植物","封筒","調味料","氷","葉っぱ","日記","ボタン","レンズ","革の靴","革の鞄","マウス","コイン","弁当箱","赤ワイン","油のシミ","チラシ","カーテン","事務用品","スポンジ","ボールペン","USBメモリ","鏡","タバコの灰","インスタント麺","輸血パック","靴下","砂時計","ビーチN\\サンダル","謝罪メモ","ガラスのN\\破片","歯車","試験用紙","昆虫","ダンボール箱","積み木","入れ歯","ラブレター","宅急便","ゲーミングN\\バッグ","漢方薬","髪の毛","宝くじ"
+];
+
+const FORENSIC_FIXED = [
+  { title:"死因", items:["窒息","重症","失血","病気","中毒","事故"] },
+  { title:"現場", items:[] }, // Scene card
+];
+
+const FORENSIC_POOL = [
+  { title:"犠牲者の衣服", items:["清潔","だらしない","上品","みすぼらしい","奇妙","全裸"] },
+  { title:"被害者の趣味", items:["科学","ゲーム","冒険","食べもの","芸術","ファッション"] },
+  { title:"犠牲者の職業", items:["社長","専門家","労働者","学生","無職","定年後"] },
+  { title:"死亡時刻", items:["明け方","朝","正午","午後","夕方","夜"] },
+  { title:"死体の状態", items:["まだ温かい","死後硬直している","腐敗している","欠損している","無傷","曲がっている"] },
+  { title:"犯行動機", items:["怨念（おんねん）","権力","金銭","情愛","嫉妬","正義感"] },
+  { title:"現場の状況", items:["破片まみれ","灰まみれ","水で濡れている","割れている","散らかっている","整頓されている"] },
+  { title:"居合わせた人の証言", items:["突然の音","長い音","におい","見た目","動き","なし"] },
+  { title:"現場の痕跡", items:["指紋","足跡","あざ","血痕","体液","傷跡"] },
+  { title:"犯人の性格", items:["傲慢","卑劣","激怒","貪欲","力強い","異常"] },
+  { title:"犯行期間", items:["一瞬","短時間","徐々に","長時間","数日","不明"] },
+  { title:"周囲の音", items:["自然","交通","人","機械","活気","静か"] },
+  { title:"被害者の人柄", items:["有名","荒々しい","内気","健康的","怠惰","平凡"] },
+  { title:"関係", items:["親族","友人","同僚","雇用主／従業員","恋人","他人"] },
+  { title:"第六感的印象", items:["鮮明な色","強烈な感情","不安感","親近感","背徳感","破茶滅茶"] },
+  { title:"凶器", items:["入手が容易","入手が難しい","元から現場にある","加害者の私物","予想外","不明"] },
+  { title:"一般的な印象", items:["平凡","独創的","うさんくさい","残酷","恐ろしい","サスペンスに満ちている"] },
+  { title:"犠牲者の表情", items:["おだやか","あがいている","おびえている","痛がっている","無表情","怒っている"] },
+  { title:"犯人が触発されたもの", items:["テレビ","模倣","激情","不注意","政治","なし"] },
+  { title:"経過", items:["娯楽中","休息中","会合中","取引中","訪問中","食事中"] },
+  { title:"漂う匂い", items:["化学品","香水","排泄物","花","ゴミ","食べもの"] },
+  { title:"死体のヒント", items:["頭部","胸部","手","足","局部","全身"] },
+  { title:"天気", items:["晴れ","雷雨","乾燥している","じめじめしている","寒い","暑い"] },
+  { title:"犠牲者の特徴", items:["子ども","青年","中年","老人","男","女"] },
+  { title:"犠牲者の体格", items:["肥満","細身","背が高い","背が低い","見にくい","健康"] },
+  { title:"犯行日", items:["平日","週末","春","夏","秋","冬"] },
+  { title:"突然の事件", items:["停電","火事","対立","貴重品の消失","悲鳴","なし"] },
+  { title:"残された証拠品", items:["自然的","芸術的","メモに残された","人工的","個人的","関係がない"] },
 ];
 
 /* DOM */
@@ -490,6 +1267,10 @@ const btnSeatCancel = document.getElementById('btnSeatCancel');
 const seatLabel = seatPop.querySelector('label');
 
 const playersColumn = document.getElementById('playersColumn');
+const forensicDock = document.getElementById('forensicDock');
+const forensicColumn = document.getElementById('forensicColumn');
+
+const bottomControls = document.getElementById('bottomControls');
 
 const kickDialog = document.getElementById('kickDialog');
 const kickMessage = document.getElementById('kickMessage');
@@ -504,13 +1285,37 @@ const btnResetRoom = document.getElementById('btnResetRoom');
 
 const viewToggleBtn = document.getElementById('viewToggleBtn');
 
-/* 追い出し */
+const centerIntro = document.getElementById('centerIntro');
+const centerIntroPop = document.getElementById('centerIntroPop');
+
+const choosingPop = document.getElementById('choosingPop');
+
+const helpBtn = document.getElementById('helpBtn');
+const helpBackdrop = document.getElementById('helpBackdrop');
+const btnHelpClose = document.getElementById('btnHelpClose');
+const helpBody = document.getElementById('helpBody');
+
+const replaceBackdrop = document.getElementById('replaceBackdrop');
+const replaceMessage = document.getElementById('replaceMessage');
+const btnReplaceYes = document.getElementById('btnReplaceYes');
+const btnReplaceNo  = document.getElementById('btnReplaceNo');
+
+const discussionPop = document.getElementById('discussionPop');
+
+/* Scene picker DOM */
+const scenePickerBackdrop = document.getElementById('scenePickerBackdrop');
+const sceneGrid = document.getElementById('sceneGrid');
+const sceneHint = document.getElementById('sceneHint');
+
+viewToggleBtn.style.display = 'none';
+
+/* 追い出し（今回は未使用でも安全に残す） */
 let pendingSeatIndexToSteal = null;
 let pendingSeatPlayerIdToSteal = null;
 let isRenderingSeatTabs = false;
 let latestPlayers = [];
 
-/* 手動改行 & 自動フィット */
+/* name-tag フィット */
 const _fitCanvas = document.createElement('canvas');
 const _fitCtx = _fitCanvas.getContext('2d');
 
@@ -536,7 +1341,9 @@ function measureTextWidthPx(text, font){
 }
 function fitNameTag(tagEl, lines){
   requestAnimationFrame(() => {
+    tagEl.style.fontSize = '';
     const cs = getComputedStyle(tagEl);
+
     const padL = parseFloat(cs.paddingLeft) || 0;
     const padR = parseFloat(cs.paddingRight) || 0;
     const availW = Math.max(0, tagEl.clientWidth - padL - padR);
@@ -544,89 +1351,83 @@ function fitNameTag(tagEl, lines){
     const family = cs.fontFamily || 'system-ui';
     const weight = cs.fontWeight || '900';
 
-    const isTwoCol = document.body.classList.contains('two-col');
-    const maxFont = isTwoCol ? 9 : 10;
-    const minFont = isTwoCol ? 5 : 6;
+    const basePx = Math.max(1, Math.round(parseFloat(cs.fontSize) || 12));
+    const minPx = Math.max(6, Math.floor(basePx * 0.6));
+    const slack = 0.5;
 
-    for (let size = maxFont; size >= minFont; size--){
+    {
+      const font = `${weight} ${basePx}px ${family}`;
+      let ok = true;
+      for (const line of lines){
+        const w = measureTextWidthPx(line, font);
+        if (w > availW + slack) { ok = false; break; }
+      }
+      if (ok){ tagEl.style.fontSize = ''; return; }
+    }
+
+    for (let size = basePx; size >= minPx; size--){
       const font = `${weight} ${size}px ${family}`;
       let ok = true;
       for (const line of lines){
         const w = measureTextWidthPx(line, font);
-        if (w > availW) { ok = false; break; }
+        if (w > availW + slack) { ok = false; break; }
       }
-      if (ok){
-        tagEl.style.fontSize = `${size}px`;
-        return;
-      }
+      if (ok){ tagEl.style.fontSize = `${size}px`; return; }
     }
-    tagEl.style.fontSize = `${minFont}px`;
+    tagEl.style.fontSize = `${minPx}px`;
   });
 }
 
-/* =========================
-   ★ 2列時：折り返し無しで必ず収めるための自動縮小
-   ========================= */
-function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+/* clue-item 自動縮小 */
+function fitClueItemTextRow(itemEl){
+  const textEl = itemEl.querySelector('.clue-item-text');
+  if (!textEl) return;
 
-function computeAndApplyTwoColScale(){
-  // 2列じゃなければ 1 に戻す
-  if (!document.body.classList.contains('two-col')){
-    playersColumn.style.setProperty('--uiScale', '1');
-    return;
+  const base = 11;
+  const min = 7;
+
+  textEl.style.fontSize = `${base}px`;
+
+  const slack = 1;
+  for (let s = base; s >= min; s--){
+    textEl.style.fontSize = `${s}px`;
+    if (textEl.scrollWidth <= textEl.clientWidth + slack) return;
   }
-
-  // まず一旦は上限値（見た目基準）
-  let scale = 0.82;
-
-  // どれか1つの row4 の実幅から「4枚+gap」が入るスケールを計算
-  const sampleRow = playersColumn.querySelector('.player-block .two-rows .row4');
-  if (sampleRow){
-    const avail = sampleRow.clientWidth; // row4が使える横幅
-
-    // 基準：カード60px×4 + gap8px×3 ＝ 264px
-    const baseCards = 60 * 4;
-    const baseGaps  = 8  * 3;
-    const baseTotal = baseCards + baseGaps; // 264
-
-    const needScale = avail / baseTotal;
-
-    // 2列時の見た目範囲（小さすぎ防止）
-    scale = clamp(needScale, 0.52, 0.82);
-  }
-
-  playersColumn.style.setProperty('--uiScale', String(scale));
-
-  // フォントフィットやり直し（スケール変化後）
-  requestAnimationFrame(() => {
-    document.querySelectorAll('.name-tag').forEach(tagEl => {
-      const name = tagEl.getAttribute('data-name') || '';
-      const lines = splitManualLines(name).slice(0,2);
-      setNameTagLines(tagEl, name);
-      fitNameTag(tagEl, lines);
-    });
-  });
+  textEl.style.fontSize = `${min}px`;
+}
+function fitClueItemsInRow(clueRow){
+  const items = Array.from(clueRow.querySelectorAll('.clue-item'));
+  for (const it of items) fitClueItemTextRow(it);
 }
 
-/* =========================
-   表示モード：1列 / 2列
-   ========================= */
-function setTwoColMode(on){
-  document.body.classList.toggle('two-col', !!on);
-  localStorage.setItem('bbTwoCol', on ? '1' : '0');
-
-  // スケール再計算
-  requestAnimationFrame(() => computeAndApplyTwoColScale());
+/* dchip overlap */
+function rectsOverlap(a, b, pad = 0){
+  return !(
+    (a.right  - pad) < (b.left   + pad) ||
+    (a.left   + pad) > (b.right  - pad) ||
+    (a.bottom - pad) < (b.top    + pad) ||
+    (a.top    + pad) > (b.bottom - pad)
+  );
 }
-(function initTwoCol(){
-  const saved = localStorage.getItem('bbTwoCol') === '1';
-  setTwoColMode(saved);
-})();
-viewToggleBtn.addEventListener('click', () => {
-  const on = !document.body.classList.contains('two-col');
-  setTwoColMode(on);
-});
-window.addEventListener('resize', () => computeAndApplyTwoColScale());
+function updateDchipOverlapInRow(clueRow){
+  if (!clueRow) return;
+  clueRow.querySelectorAll('.clue-chip.overlap').forEach(ch => ch.classList.remove('overlap'));
+
+  const rows = Array.from(clueRow.querySelectorAll('.clue-item'));
+  for (const row of rows){
+    const chip = row.querySelector('.clue-chip');
+    const text = row.querySelector('.clue-item-text');
+    if (!chip || !text) continue;
+
+    const chipRect = chip.getBoundingClientRect();
+    const textRect = text.getBoundingClientRect();
+    const pad = 3;
+
+    if (rectsOverlap(chipRect, textRect, pad)){
+      chip.classList.add('overlap');
+    }
+  }
+}
 
 /* utils */
 function generateRoomCode(length = 6){
@@ -642,14 +1443,49 @@ function refreshRoomLabels(){
   roomInfo.textContent = infoText;
   roomInfoLobby.textContent = infoText;
 }
+
+/* =========================
+   ★ボタン列の位置更新（法医学者ドックの高さ分だけ持ち上げる）
+   ========================= */
+function updateBottomControlsPosition(){
+  const joined = joinBox.classList.contains('hidden');
+  if (!joined){
+    document.documentElement.style.setProperty('--forensicDockH', '0px');
+    return;
+  }
+  const dockVisible = !forensicDock.classList.contains('hidden');
+  let h = 0;
+  if (dockVisible){
+    // visible 時だけ高さを拾う
+    const r = forensicDock.getBoundingClientRect();
+    h = Math.max(0, Math.round(r.height));
+  }
+  document.documentElement.style.setProperty('--forensicDockH', `${h}px`);
+}
+
 function updateHostUI(){
   refreshRoomLabels();
+
+  const joined = joinBox.classList.contains('hidden');
+  viewToggleBtn.style.display = joined ? '' : 'none';
+
+  bottomControls.classList.toggle('hidden', !joined);
+
+  if (joined){
+    helpBtn.classList.add('visible');
+  } else {
+    helpBtn.classList.remove('visible');
+  }
+
   if (state.isHost){
     hostSettingsBtn.classList.add('visible');
   } else {
     hostSettingsBtn.classList.remove('visible');
     startPop.classList.add('hidden');
   }
+
+  updateBottomControlsPosition();
+  if (!helpBackdrop.classList.contains('hidden')) renderHelpList();
 }
 
 /* subscribe */
@@ -657,9 +1493,20 @@ function subscribeRoom(){
   const roomRef = ref(db, `rooms/${state.roomCode}`);
   onValue(roomRef, snap => {
     state.room = snap.val() || {};
+
+    const resetAt = Number(state.room.resetAt || 0);
+    if (Number.isFinite(resetAt) && resetAt > 0){
+      const firstSeen = (state._lastSeenResetAt === 0);
+      if (!firstSeen && resetAt !== state._lastSeenResetAt){
+        handleRoomResetLocal(resetAt);
+      }
+      state._lastSeenResetAt = resetAt;
+    }
+
     const waiting = (!state.isHost && !state.room.maxPlayers);
     hostSelectingPop.classList.toggle('hidden', !waiting);
-    syncSeatUI();
+
+    syncSeatUI().catch(()=>{});
   });
 }
 function subscribeHostState(){
@@ -668,7 +1515,36 @@ function subscribeHostState(){
     const hostId = snap.val();
     state.isHost = (hostId === state.userId);
     updateHostUI();
-    syncSeatUI();
+    syncSeatUI().catch(()=>{});
+  });
+}
+function subscribeRoleOptions(){
+  const optRef = ref(db, `rooms/${state.roomCode}/roleOptions`);
+  onValue(optRef, snap => {
+    state.roleOptions = snap.val() || {};
+    if (!helpBackdrop.classList.contains('hidden')) renderHelpList();
+  });
+}
+function subscribePhase(){
+  const pRef = ref(db, `rooms/${state.roomCode}/phase`);
+  onValue(pRef, snap => {
+    state.phase = snap.val() || null;
+    updateChoosingPopup();
+  });
+}
+function subscribeSelections(){
+  const sRef = ref(db, `rooms/${state.roomCode}/selections`);
+  onValue(sRef, async snap => {
+    state.selections = snap.val() || {};
+    updateChoosingPopup();
+
+    if (state.isHost && state._lastDealStamp){
+      if (isSelectionsComplete() && state.phase !== 'ready'){
+        await set(ref(db, `rooms/${state.roomCode}/phase`), 'ready').catch(()=>{});
+      }
+    }
+
+    renderPlayersVertical(latestPlayers);
   });
 }
 function subscribePlayers(){
@@ -685,30 +1561,168 @@ function subscribePlayers(){
       .sort((a,b) => a.seatIndex - b.seatIndex);
 
     latestPlayers = players;
+    if (!state._playersLoaded) state._playersLoaded = true;
 
     const mySeat = players.find(p => p.id === state.userId);
-    if (mySeat && state.seatedTable === null) {
+    if (mySeat) {
       state.seatedTable = mySeat.seatIndex;
+      setWatchMode(false);
       seatPop.classList.add('hidden');
+    } else {
+      state.seatedTable = null;
     }
-
-    const meStillSeated = players.some(p => p.id === state.userId);
-    if (!meStillSeated && state.seatedTable !== null) state.seatedTable = null;
 
     await syncSeatUI();
     renderPlayersVertical(players);
   });
 }
+function getMaxDealtAt(dealObj){
+  let m = 0;
+  if (!dealObj) return 0;
+  for (const k of Object.keys(dealObj)){
+    const v = dealObj[k];
+    const t = (v && typeof v.dealtAt === 'number') ? v.dealtAt : 0;
+    if (t > m) m = t;
+  }
+  return m;
+}
 function subscribeDeal(){
   const dealRef = ref(db, `rooms/${state.roomCode}/deal`);
-  onValue(dealRef, snap => {
-    state.deal = snap.val() || {};
+  onValue(dealRef, async snap => {
+    const next = snap.val() || {};
+    state.deal = next;
+
+    const stamp = getMaxDealtAt(next);
+    const prevStamp = state._lastDealStamp || 0;
+    state._lastDealStamp = stamp;
+
+    state.isForensicViewer = (state.userId === findPlayerIdByRole("法医学者"));
+    renderPlayersVertical(latestPlayers);
+
+    if (stamp && stamp !== prevStamp){
+      showForensicIntro(1800);
+      await ensureForensicCluesInDB().catch(()=>{});
+    }
+
+    updateChoosingPopup();
+  });
+}
+function subscribeForensicPick(){
+  const pickRef = ref(db, `rooms/${state.roomCode}/forensicPick`);
+  onValue(pickRef, snap => {
+    state.forensicPick = snap.val() || {};
+    if (state._swapAnimating && Date.now() < state._swapAnimEndAt){
+      state._pendingRenderAfterSwap = true;
+      return;
+    }
     renderPlayersVertical(latestPlayers);
   });
 }
+function subscribeForensicClues(){
+  const cRef = ref(db, `rooms/${state.roomCode}/forensicClues`);
+  onValue(cRef, snap => {
+    state.forensicClues = snap.val() || null;
+    if (state._swapAnimating && Date.now() < state._swapAnimEndAt){
+      state._pendingRenderAfterSwap = true;
+      return;
+    }
+    renderPlayersVertical(latestPlayers);
+  });
+}
+function subscribeForensicSwapAnim(){
+  const aRef = ref(db, `rooms/${state.roomCode}/forensicSwapAnim`);
+  onValue(aRef, snap => {
+    const ev = snap.val() || null;
+    if (!ev) return;
 
+    const cardIdx = Number(ev.cardIdx);
+    const newPoolId = Number(ev.newPoolId);
+    const startedAt = Number(ev.startedAt || 0);
+
+    if (!Number.isFinite(cardIdx) || !Number.isFinite(newPoolId) || !Number.isFinite(startedAt)) return;
+
+    const key = `${startedAt}|${cardIdx}|${newPoolId}`;
+    if (state._lastSwapEventKey === key) return;
+    state._lastSwapEventKey = key;
+
+    playSwapAnimationForEveryone({ cardIdx, newPoolId, startedAt });
+  });
+}
+function subscribeDiscussionStage(){
+  const sRef = ref(db, `rooms/${state.roomCode}/discussionStage`);
+  onValue(sRef, snap => {
+    const next = Number(snap.val() || 1);
+    const prev = state.discussionStage || 1;
+    state.discussionStage = next;
+
+    if (next !== prev && next >= 2){
+      const text = (next === 2) ? '第2議論' : (next === 3) ? '第3議論' : `第${next}議論`;
+      fireDiscussionPop(text);
+    }
+  });
+}
+function subscribeForensicReplacePreview(){
+  const rRef = ref(db, `rooms/${state.roomCode}/forensicReplacePreview`);
+  onValue(rRef, snap => {
+    state.forensicReplacePreview = snap.val() || null;
+    applyReplacePreviewToDOM();
+  });
+}
+function subscribeForensicDiscarded(){
+  const dRef = ref(db, `rooms/${state.roomCode}/forensicDiscarded`);
+  onValue(dRef, snap => {
+    state.forensicDiscarded = snap.val() || {};
+  });
+}
+function subscribeSceneSelection(){
+  const sRef = ref(db, `rooms/${state.roomCode}/sceneSelection`);
+  onValue(sRef, snap => {
+    state.sceneSelection = snap.val() || null;
+    renderPlayersVertical(latestPlayers);
+    if (scenePickerBackdrop.classList.contains('show')){
+      renderScenePickerGrid();
+    }
+  });
+}
+
+/* =========================
+   ★追加：リセット時のローカル同期（未着席へ）
+   ========================= */
+function handleRoomResetLocal(resetAt){
+  state.seatedTable = null;
+  setWatchMode(false);
+  seatPop.classList.add('hidden');
+  startPop.classList.add('hidden');
+  closeHelp();
+  closeDiscardOverlays();
+  closeReplaceConfirm();
+
+  state.deal = {};
+  state._lastDealStamp = 0;
+  state.selections = {};
+  state.phase = null;
+  state.forensicPick = {};
+  state.forensicClues = null;
+  state.forensicReplacePreview = null;
+  state.forensicDiscarded = {};
+  state.sceneSelection = null;
+  state._introDone = true;
+
+  renderPlayersVertical(latestPlayers);
+  updateChoosingPopup();
+  syncSeatUI().catch(()=>{});
+}
+
+/* =========================
+   席UI
+   ========================= */
 async function syncSeatUI(){
   if (!state.roomCode) return;
+
+  if (!state._playersLoaded){
+    seatPop.classList.add('hidden');
+    return;
+  }
 
   const maxPlayers = state.room.maxPlayers || null;
 
@@ -716,10 +1730,23 @@ async function syncSeatUI(){
     seatPop.classList.add('hidden');
     return;
   }
+
+  if (state.isHost && !maxPlayers){
+    await renderSeatTabs();
+    seatPop.classList.remove('hidden');
+    return;
+  }
+
   if (state.seatedTable !== null){
     seatPop.classList.add('hidden');
     return;
   }
+
+  if (!state.isHost && isWatchMode()){
+    seatPop.classList.add('hidden');
+    return;
+  }
+
   await renderSeatTabs();
   seatPop.classList.remove('hidden');
 }
@@ -737,6 +1764,11 @@ async function renderSeatTabs(){
     const roomData = roomSnap.val() || {};
     const maxPlayers = roomData.maxPlayers || null;
 
+    if (!state.isHost && !maxPlayers){
+      seatLabel.textContent = '待機中';
+      return;
+    }
+
     if(state.isHost && !maxPlayers){
       seatLabel.textContent = '人数を選択';
       for(let i=2; i<=8; i++){
@@ -746,10 +1778,12 @@ async function renderSeatTabs(){
 
         tab.onclick = async () => {
           await update(roomRef, { maxPlayers: i });
+
           const tRef = ref(db, `rooms/${state.roomCode}/tables/1`);
           await set(tRef, { playerId: state.userId, playerName: state.userName });
 
           state.seatedTable = 1;
+          setWatchMode(false);
           seatPop.classList.add('hidden');
         };
         seatTabs.appendChild(tab);
@@ -773,9 +1807,12 @@ async function renderSeatTabs(){
 
       tab.onclick = async () => {
         if(tab.classList.contains('disabled')) return;
+
         const tRef = ref(db, `rooms/${state.roomCode}/tables/${i}`);
         await set(tRef, { playerId: state.userId, playerName: state.userName || '名無し' });
+
         state.seatedTable = i;
+        setWatchMode(false);
         seatPop.classList.add('hidden');
       };
       seatTabs.appendChild(tab);
@@ -784,12 +1821,13 @@ async function renderSeatTabs(){
     isRenderingSeatTabs = false;
   }
 }
-
 btnSeatCancel.onclick = () => {
+  setWatchMode(true);
   seatPop.classList.add('hidden');
   state.seatedTable = null;
 };
 
+/* shuffle / seeded */
 function shuffle(arr){
   const a = arr.slice();
   for(let i=a.length-1;i>0;i--){
@@ -798,11 +1836,1292 @@ function shuffle(arr){
   }
   return a;
 }
+function hashStrToInt(s){
+  let h = 2166136261 >>> 0;
+  for (let i=0;i<s.length;i++){
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(a){
+  return function(){
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function seededShuffle(arr, seedKey){
+  const a = arr.slice();
+  const rnd = mulberry32(hashStrToInt(seedKey));
+  for (let i=a.length-1;i>0;i--){
+    const j = Math.floor(rnd()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pickPartnerIdDeterministic(candidates, seedKey){
+  if (!candidates.length) return null;
+  const seed = hashStrToInt(seedKey);
+  const rnd = mulberry32(seed);
+  const idx = Math.floor(rnd() * candidates.length);
+  return candidates[idx];
+}
 
-/* render */
+/* role helpers */
+function findPlayerIdByRole(roleName){
+  if (!state.deal) return null;
+  for (const pid of Object.keys(state.deal)){
+    if ((state.deal[pid]?.role || '') === roleName) return pid;
+  }
+  return null;
+}
+function findPlayerNameById(pid){
+  const p = latestPlayers.find(x => x.id === pid);
+  return p ? (p.name || '名無し') : '名無し';
+}
+
+/* ★選択系ヘルパ */
+function getViewerRoleName(){
+  return state.deal?.[state.userId]?.role || '';
+}
+function hasCunningRole(){
+  return !!findPlayerIdByRole("Cunning Madman");
+}
+function getSelection(roleKey, kind){
+  const obj = state.selections || {};
+  const s = obj?.[roleKey]?.[kind] || null;
+  if (!s) return null;
+  const idx = Number(s.idx);
+  if (!Number.isFinite(idx)) return null;
+  return { idx, name: String(s.name || '') };
+}
+function isRoleSelectionLocked(roleKey){
+  const w = getSelection(roleKey,'weapon');
+  const e = getSelection(roleKey,'evidence');
+  return !!(w && e);
+}
+function isSelectionsComplete(){
+  const mW = getSelection('murderer','weapon');
+  const mE = getSelection('murderer','evidence');
+  const mOK = !!(mW && mE);
+
+  if (hasCunningRole()){
+    const cW = getSelection('cunning','weapon');
+    const cE = getSelection('cunning','evidence');
+    return mOK && !!(cW && cE);
+  }
+  return mOK;
+}
+function isChooserSelf(){
+  const murdererId = findPlayerIdByRole("殺人犯");
+  const cunningId  = findPlayerIdByRole("Cunning Madman");
+  return (state.userId && (state.userId === murdererId || (cunningId && state.userId === cunningId)));
+}
+function updateChoosingPopup(){
+  const shouldShow =
+    !!state._lastDealStamp &&
+    !isChooserSelf() &&
+    !isSelectionsComplete();
+
+  choosingPop.classList.toggle('show', shouldShow);
+  choosingPop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+}
+
+async function setHandSelection(roleKey, kind, idx, name){
+  if (!state.roomCode) return;
+  if (!Number.isFinite(Number(idx))) return;
+
+  if ((roleKey === 'murderer' || roleKey === 'cunning') && isRoleSelectionLocked(roleKey)) {
+    return;
+  }
+
+  const path = `rooms/${state.roomCode}/selections/${roleKey}/${kind}`;
+  await set(ref(db, path), {
+    idx: Number(idx),
+    name: String(name || ''),
+    by: state.userId,
+    at: Date.now()
+  });
+}
+
+/* dchip count */
+function getDchipCount(){
+  const obj = state.forensicPick || {};
+  let c = 0;
+  for (const k of Object.keys(obj)){
+    const v = obj[k];
+    if (v === null || typeof v === 'undefined') continue;
+    c++;
+  }
+  return c;
+}
+function canForensicSwapNow(){
+  return state.isForensicViewer && getDchipCount() === 6;
+}
+function canForensicChangeScene(){
+  return state.isForensicViewer && getDchipCount() < 3;
+}
+
+/* forensic clues init */
+function calcInitialPoolIds(){
+  const seedKey = `${state.roomCode || ''}|${state._lastDealStamp || 0}|forensicPoolIds`;
+  const seed = hashStrToInt(seedKey);
+  const rnd = mulberry32(seed);
+
+  const ids = Array.from({length:FORENSIC_POOL.length}, (_,i)=>i);
+  for (let i=ids.length-1;i>0;i--){
+    const j = Math.floor(rnd()*(i+1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return ids.slice(0,4);
+}
+async function ensureForensicCluesInDB(){
+  if (!state.roomCode) return;
+  if (!state._lastDealStamp) return;
+
+  const cRef = ref(db, `rooms/${state.roomCode}/forensicClues`);
+  const snap = await get(cRef);
+  if (snap.exists()) return;
+
+  const poolIds = calcInitialPoolIds();
+  await set(cRef, { poolIds, updatedAt: Date.now() });
+
+  const sRef = ref(db, `rooms/${state.roomCode}/discussionStage`);
+  const sSnap = await get(sRef);
+  if (!sSnap.exists()) await set(sRef, 1);
+}
+
+/* Scene selection helpers */
+function getSelectedSceneSetIdx(){
+  const s = state.sceneSelection;
+  const idx = s ? Number(s.setIdx) : NaN;
+  return Number.isFinite(idx) ? idx : null;
+}
+function getSceneCardItemsOrNull(){
+  const idx = getSelectedSceneSetIdx();
+  if (idx === null) return null;
+  const def = SCENE_SETS[idx];
+  return def ? def.items.slice() : null;
+}
+function buildCurrentClueCards(){
+  let poolIds = state.forensicClues?.poolIds;
+  if (!Array.isArray(poolIds) || poolIds.length !== 4){
+    poolIds = calcInitialPoolIds();
+  }
+  const picked4 = poolIds.map(id => FORENSIC_POOL[id]).filter(Boolean);
+
+  const fixed = FORENSIC_FIXED.map((c, i) => {
+    if (i !== 1) return c;
+    const items = getSceneCardItemsOrNull();
+    return { title:"現場", items: items ? items : [] };
+  });
+
+  return fixed.concat(picked4);
+}
+function getVisibleClueCardsForEveryone(){
+  const all = buildCurrentClueCards();
+  return isSelectionsComplete() ? all : all.slice(0, 2);
+}
+
+/* layout ordering */
+function arrangePlayersForView(players){
+  if (!players || !players.length) return [];
+
+  const forensicId = findPlayerIdByRole("法医学者");
+  const murdererId = findPlayerIdByRole("殺人犯");
+
+  if (!forensicId || !murdererId){
+    return players.slice();
+  }
+
+  const isForensicView = (state.userId === forensicId);
+  const anchorId = isForensicView ? murdererId : state.userId;
+
+  const forensic = players.find(p => p.id === forensicId) || null;
+  const others = players.filter(p => p.id !== forensicId);
+
+  const anchor = others.find(p => p.id === anchorId) || null;
+  if (!anchor || !forensic){
+    const rest = players.filter(p => p.id !== forensicId);
+    return rest.concat([forensic]);
+  }
+
+  const remaining = others.filter(p => p.id !== anchorId);
+  const countExForensic = others.length;
+  const needRightNeighbor = (countExForensic % 2 === 0);
+
+  let partner = null;
+  if (needRightNeighbor){
+    const seedKey = `${state.roomCode || ''}|${state._lastDealStamp || 0}|partner|${anchorId}`;
+    partner = pickPartnerIdDeterministic(remaining.map(p => p.id), seedKey);
+  }
+
+  const partnerObj = partner ? (remaining.find(p => p.id === partner) || null) : null;
+  const above = partnerObj ? remaining.filter(p => p.id !== partnerObj.id) : remaining.slice();
+
+  const ordered = above.concat([anchor]);
+  if (partnerObj) ordered.push(partnerObj);
+  ordered.push(forensic);
+
+  return ordered;
+}
+
+/* start intro */
+function showForensicIntro(ms=1800){
+  const forensicId = findPlayerIdByRole("法医学者");
+  if (!forensicId) return;
+  const name = findPlayerNameById(forensicId);
+
+  state._introDone = false;
+  centerIntroPop.textContent = `法医学者は「${name}」です。`;
+  centerIntro.classList.add('show');
+  clearTimeout(showForensicIntro._t);
+  showForensicIntro._t = setTimeout(() => {
+    centerIntro.classList.remove('show');
+    state._introDone = true;
+
+    renderPlayersVertical(latestPlayers);
+    updateChoosingPopup();
+  }, ms);
+}
+
+/* clue title rule */
+function applyClueTitleRule(titleEl){
+  const BASE = 13;
+  const MIN  = 8;
+  const slackH = 1;
+
+  const raw = titleEl.getAttribute('data-title') || '';
+  const len = [...raw].length;
+
+  titleEl.classList.remove('is-1line','is-2line');
+
+  let target = BASE;
+
+  if (len === 5){
+    target = BASE - 3;
+    titleEl.classList.add('is-1line');
+  } else if (len >= 6){
+    target = BASE - 4;
+    titleEl.classList.add('is-2line');
+  } else {
+    titleEl.classList.add('is-1line');
+  }
+
+  titleEl.style.fontSize = `${target}px`;
+
+  const card = titleEl.closest('.clue-card');
+  const csCard = card ? getComputedStyle(card) : null;
+  const titleH = csCard ? (parseFloat(csCard.getPropertyValue('--titleH')) || 30) : 30;
+
+  for (let s = target; s >= MIN; s--){
+    titleEl.style.fontSize = `${s}px`;
+    if (titleEl.scrollHeight <= titleH + slackH) break;
+  }
+}
+function fitClueTitlesInRow(clueRow){
+  const titles = Array.from(clueRow.querySelectorAll('.clue-title'));
+  for (const el of titles) applyClueTitleRule(el);
+}
+
+/* dchip pick */
+async function setForensicPick(cardIdx, itemIdx){
+  if (!state.roomCode) return;
+  const forensicId = findPlayerIdByRole("法医学者");
+  if (!forensicId) return;
+  if (state.userId !== forensicId) return;
+
+  const basePath = `rooms/${state.roomCode}/forensicPick/${cardIdx}`;
+  const current = state.forensicPick ? state.forensicPick[String(cardIdx)] : null;
+  const next = (current === itemIdx) ? null : itemIdx;
+
+  if (next === null || typeof next === 'undefined'){
+    await remove(ref(db, basePath));
+  } else {
+    await set(ref(db, basePath), next);
+  }
+}
+
+/* discussion pop */
+function fireDiscussionPop(text){
+  discussionPop.textContent = text;
+  discussionPop.classList.remove('show');
+  void discussionPop.offsetWidth;
+  discussionPop.classList.add('show');
+  clearTimeout(fireDiscussionPop._t);
+  fireDiscussionPop._t = setTimeout(() => {
+    discussionPop.classList.remove('show');
+  }, 2600);
+}
+
+/* =========================
+   Scene picker UI
+   ========================= */
+function openScenePicker(){
+  if (!state.roomCode) return;
+  renderScenePickerGrid();
+  scenePickerBackdrop.classList.add('show');
+  scenePickerBackdrop.setAttribute('aria-hidden','false');
+}
+function closeScenePicker(){
+  scenePickerBackdrop.classList.remove('show');
+  scenePickerBackdrop.setAttribute('aria-hidden','true');
+}
+scenePickerBackdrop.addEventListener('click', (e) => {
+  if (e.target === scenePickerBackdrop) closeScenePicker();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && scenePickerBackdrop.classList.contains('show')) closeScenePicker();
+});
+
+function makeClueCardStaticViewEl({cardIdx, title, items, pickedItemIdx}){
+  const d = document.createElement('div');
+  d.className = 'clue-card';
+  d.setAttribute('data-card-idx', String(cardIdx));
+
+  const t = document.createElement('div');
+  t.className = 'clue-title';
+  t.setAttribute('data-title', title);
+
+  const tt = document.createElement('span');
+  tt.className = 'clue-title-text';
+  tt.textContent = title;
+  t.appendChild(tt);
+
+  const list = document.createElement('div');
+  list.className = 'clue-items';
+
+  const pi = (pickedItemIdx === null || typeof pickedItemIdx === 'undefined') ? null : Number(pickedItemIdx);
+
+  for (let i=0;i<items.length;i++){
+    const it = items[i];
+
+    const row = document.createElement('div');
+    row.className = 'clue-item';
+    row.setAttribute('data-item-idx', String(i));
+
+    if (pi === i){
+      const pick = document.createElement('div');
+      pick.className = 'clue-pick';
+
+      const chip = document.createElement('img');
+      chip.className = 'clue-chip';
+      chip.src = 'dchip.png';
+      chip.alt = 'dchip';
+      chip.loading = 'eager';
+      pick.appendChild(chip);
+
+      row.appendChild(pick);
+    }
+
+    const tx = document.createElement('span');
+    tx.className = 'clue-item-text';
+    tx.textContent = it;
+
+    row.appendChild(tx);
+    list.appendChild(row);
+  }
+
+  d.appendChild(t);
+  d.appendChild(list);
+  return d;
+}
+
+function renderScenePickerGrid(){
+  sceneGrid.innerHTML = '';
+
+  const selectedIdx = getSelectedSceneSetIdx();
+  const canSelectNow = canForensicChangeScene();
+
+  const viewerIsForensic = state.isForensicViewer;
+  const allowPick = viewerIsForensic && canSelectNow;
+
+  if (!viewerIsForensic){
+    sceneHint.textContent = 'Scene（閲覧のみ）';
+  } else {
+    sceneHint.textContent = canSelectNow ? 'Scene（選択）' : 'Scene（閲覧のみ）';
+  }
+
+  SCENE_SETS.forEach((def, idx) => {
+    const card = makeClueCardStaticViewEl({
+      cardIdx: idx,
+      title: def.title,
+      items: def.items,
+      pickedItemIdx: null,
+    });
+    card.classList.add('scene-option');
+
+    if (selectedIdx === idx) card.classList.add('selected');
+
+    if (allowPick){
+      card.classList.add('clickable');
+      card.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await setSceneSelection(idx);
+        closeScenePicker();
+      });
+    }
+
+    sceneGrid.appendChild(card);
+
+    requestAnimationFrame(() => {
+      card.querySelectorAll('.clue-title').forEach(t => applyClueTitleRule(t));
+      card.querySelectorAll('.clue-item').forEach(it => fitClueItemTextRow(it));
+      updateDchipOverlapInRow(card);
+    });
+  });
+}
+
+async function setSceneSelection(setIdx){
+  if (!state.roomCode) return;
+  const forensicId = findPlayerIdByRole("法医学者");
+  if (!forensicId) return;
+  if (state.userId !== forensicId) return;
+
+  const idx = Number(setIdx);
+  if (!Number.isFinite(idx)) return;
+  if (!SCENE_SETS[idx]) return;
+
+  await set(ref(db, `rooms/${state.roomCode}/sceneSelection`), {
+    setIdx: idx,
+    by: state.userId,
+    at: Date.now()
+  });
+}
+
+/* =========================
+   Help（Identity Cards）
+   ========================= */
+function isRoleSelected(key){
+  return !!(state.roleOptions && state.roleOptions[key]);
+}
+async function setRoleSelected(key, on){
+  if (!state.roomCode) return;
+  if (!state.isHost) return;
+
+  const base = ref(db, `rooms/${state.roomCode}/roleOptions`);
+  const next = Object.assign({}, state.roleOptions || {});
+
+  const def = ROLE_DEFS.find(r => r.key === key) || null;
+  if (def?.exclusiveGroup === 'madpair' && on){
+    next['madman'] = false;
+    next['cunning_madman'] = false;
+  }
+
+  next[key] = !!on;
+
+  const cleaned = {};
+  for (const k of Object.keys(next)){
+    if (next[k]) cleaned[k] = true;
+  }
+
+  await set(base, cleaned);
+}
+
+function makeRoleCardBox({key, label, clickable, dimByDefault, selected}){
+  const card = document.createElement('div');
+  card.className = 'role-card';
+  card.textContent = 'CARD';
+
+  const isBase = ROLE_BASE_KEYS.has(key);
+  const shouldDim = (!isBase && dimByDefault && !selected);
+
+  if (shouldDim) card.classList.add('dimmed');
+  if (selected) card.classList.add('selected');
+
+  if (clickable){
+    card.classList.add('clickable');
+    card.setAttribute('role','button');
+    card.setAttribute('aria-label', `${label} を${selected ? '解除' : '追加'}`);
+    card.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!state.isHost) return;
+      if (ROLE_BASE_KEYS.has(key)) return;
+
+      const now = isRoleSelected(key);
+      await setRoleSelected(key, !now);
+
+      state.roleOptions = Object.assign({}, state.roleOptions || {});
+      if (!now){
+        if (key === 'madman' || key === 'cunning_madman'){
+          state.roleOptions.madman = false;
+          state.roleOptions.cunning_madman = false;
+        }
+        state.roleOptions[key] = true;
+      } else {
+        delete state.roleOptions[key];
+      }
+      renderHelpList();
+    });
+  } else {
+    card.style.cursor = 'default';
+  }
+
+  return card;
+}
+
+function renderHelpList(){
+  helpBody.innerHTML = '';
+
+  const canClick = !!state.isHost;
+
+  const defByKey = {};
+  for (const d of ROLE_DEFS) defByKey[d.key] = d;
+
+  const baseList = ['murderer','forensic','investigator'].map(k => defByKey[k]).filter(Boolean);
+  for (const r of baseList){
+    const row = document.createElement('div');
+    row.className = 'role-row';
+
+    const card = makeRoleCardBox({
+      key: r.key,
+      label: r.name,
+      clickable: false,
+      dimByDefault: false,
+      selected: true
+    });
+
+    const desc = document.createElement('div');
+    desc.className = 'role-desc';
+
+    const n = document.createElement('p');
+    n.className = 'name';
+    n.textContent = r.name;
+
+    const t = document.createElement('p');
+    t.className = 'text';
+    t.textContent = r.text;
+
+    desc.appendChild(n);
+    desc.appendChild(t);
+
+    row.appendChild(card);
+    row.appendChild(desc);
+    helpBody.appendChild(row);
+  }
+
+  {
+    const m = defByKey['madman'];
+    const c = defByKey['cunning_madman'];
+    if (m && c){
+      const row = document.createElement('div');
+      row.className = 'role-row';
+
+      const pair = document.createElement('div');
+      pair.className = 'role-card-pair';
+
+      const mSel = isRoleSelected('madman');
+      const cSel = isRoleSelected('cunning_madman');
+
+      pair.appendChild(makeRoleCardBox({
+        key: m.key,
+        label: m.name,
+        clickable: canClick,
+        dimByDefault: true,
+        selected: mSel
+      }));
+      pair.appendChild(makeRoleCardBox({
+        key: c.key,
+        label: c.name,
+        clickable: canClick,
+        dimByDefault: true,
+        selected: cSel
+      }));
+
+      const desc = document.createElement('div');
+      desc.className = 'role-desc';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'pair-desc';
+
+      const mk = document.createElement('div');
+      mk.className = 'pair-item';
+      mk.innerHTML = `<p class="name" style="margin:0 0 4px;">${m.name}</p>`;
+      const mt = document.createElement('p');
+      mt.className = 'text';
+      mt.textContent = m.text;
+      mk.appendChild(mt);
+
+      const ck = document.createElement('div');
+      ck.className = 'pair-item';
+      ck.innerHTML = `<p class="name" style="margin:0 0 4px;">${c.name}</p>`;
+      const ct = document.createElement('p');
+      ct.className = 'text';
+      ct.textContent = c.text;
+      ck.appendChild(ct);
+
+      wrap.appendChild(mk);
+      wrap.appendChild(ck);
+      desc.appendChild(wrap);
+
+      row.appendChild(pair);
+      row.appendChild(desc);
+      helpBody.appendChild(row);
+    }
+  }
+
+  for (const k of ['special_police','lawyer']){
+    const r = defByKey[k];
+    if (!r) continue;
+
+    const row = document.createElement('div');
+    row.className = 'role-row';
+
+    const sel = isRoleSelected(k);
+
+    const card = makeRoleCardBox({
+      key: r.key,
+      label: r.name,
+      clickable: canClick,
+      dimByDefault: true,
+      selected: sel
+    });
+
+    const desc = document.createElement('div');
+    desc.className = 'role-desc';
+
+    const n = document.createElement('p');
+    n.className = 'name';
+    n.textContent = r.name;
+
+    const t = document.createElement('p');
+    t.className = 'text';
+    t.textContent = r.text;
+
+    desc.appendChild(n);
+    desc.appendChild(t);
+
+    if (state.isHost){
+      const hint = document.createElement('p');
+      hint.className = 'text';
+      hint.style.opacity = '.70';
+      hint.style.fontSize = '12px';
+      hint.style.marginTop = '6px';
+      hint.textContent = '※ホストが「通常表示」にした状態でスタートすると、この役職カードが1枚追加で配られます。';
+      desc.appendChild(hint);
+    }
+
+    row.appendChild(card);
+    row.appendChild(desc);
+    helpBody.appendChild(row);
+  }
+}
+
+function openHelp(){
+  renderHelpList();
+  helpBackdrop.classList.remove('hidden');
+  helpBackdrop.setAttribute('aria-hidden', 'false');
+}
+function closeHelp(){
+  helpBackdrop.classList.add('hidden');
+  helpBackdrop.setAttribute('aria-hidden', 'true');
+}
+helpBtn.addEventListener('click', () => {
+  if (joinBox.classList.contains('hidden')) openHelp();
+});
+helpBackdrop.addEventListener('click', (e) => {
+  if (e.target === helpBackdrop) closeHelp();
+});
+btnHelpClose.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeHelp();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !helpBackdrop.classList.contains('hidden')) closeHelp();
+});
+
+/* 2列スケール */
+function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+function computeAndApplyTwoColScale(){
+  if (!document.body.classList.contains('two-col')){
+    playersColumn.style.setProperty('--uiScale', '1');
+    return;
+  }
+
+  let scale = 0.82;
+  const sampleRow = playersColumn.querySelector('.player-block .two-rows .row4');
+  if (sampleRow){
+    const avail = sampleRow.clientWidth;
+    const baseCards = 60 * 4;
+    const baseGaps  = 8  * 3;
+    const baseTotal = baseCards + baseGaps;
+    const needScale = avail / baseTotal;
+    scale = clamp(needScale, 0.52, 0.82);
+  }
+
+  playersColumn.style.setProperty('--uiScale', String(scale));
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.name-tag').forEach(tagEl => {
+      const name = tagEl.getAttribute('data-name') || '';
+      const lines = splitManualLines(name).slice(0,2);
+      setNameTagLines(tagEl, name);
+      fitNameTag(tagEl, lines);
+    });
+  });
+}
+
+/* 表示モード */
+function setTwoColMode(on){
+  document.body.classList.toggle('two-col', !!on);
+  localStorage.setItem('bbTwoCol', on ? '1' : '0');
+  renderPlayersVertical(latestPlayers);
+  requestAnimationFrame(() => computeAndApplyTwoColScale());
+}
+(function initTwoCol(){
+  const saved = localStorage.getItem('bbTwoCol') === '1';
+  setTwoColMode(saved);
+})();
+viewToggleBtn.addEventListener('click', () => {
+  const on = !document.body.classList.contains('two-col');
+  setTwoColMode(on);
+});
+window.addEventListener('resize', () => {
+  computeAndApplyTwoColScale();
+  const clueRow = document.querySelector('.forensic-container .clue-row');
+  if (clueRow) updateDchipOverlapInRow(clueRow);
+  updateBottomControlsPosition();
+});
+
+/* =========================
+   捨て札オーバーレイ（簡易）
+   ========================= */
+function closeDiscardOverlays(){
+  const list = state._discardOverlays || [];
+  for (const it of list){
+    try { it?.overlayEl?.remove(); } catch {}
+    try { it?.hostCardEl?.classList?.remove('discard-open'); } catch {}
+  }
+  state._discardOverlays = [];
+}
+function findClueCardElement(cardIdx){
+  return document.querySelector(`.forensic-container .clue-card[data-card-idx="${cardIdx}"]`);
+}
+function getDiscardEntriesSorted(){
+  const obj = state.forensicDiscarded || {};
+  const arr = [];
+  for (const k of Object.keys(obj)){
+    const cardIdx = Number(k);
+    const d = obj[k];
+    if (!Number.isFinite(cardIdx)) continue;
+    if (!d || !Number.isFinite(Number(d.poolId))) continue;
+    arr.push({ cardIdx, discarded: d });
+  }
+  arr.sort((a,b) => a.cardIdx - b.cardIdx);
+  return arr;
+}
+function toggleAllDiscardOverlays(){
+  const entries = getDiscardEntriesSorted();
+
+  if (!entries.length){
+    closeDiscardOverlays();
+    return;
+  }
+  if (state._discardOverlays && state._discardOverlays.length){
+    closeDiscardOverlays();
+    return;
+  }
+
+  closeDiscardOverlays();
+
+  const opened = [];
+  for (const { cardIdx, discarded } of entries){
+    const hostCardEl = findClueCardElement(cardIdx);
+    if (!hostCardEl) continue;
+
+    const oldData = FORENSIC_POOL[Number(discarded.poolId)];
+    if (!oldData) continue;
+
+    const pickedItemIdx = (discarded.pickedItemIdx === null || typeof discarded.pickedItemIdx === 'undefined')
+      ? null
+      : Number(discarded.pickedItemIdx);
+
+    const ov = document.createElement('div');
+    ov.className = 'discard-overlay';
+    ov.setAttribute('aria-label', '捨て札');
+
+    const mini = document.createElement('div');
+    mini.className = 'discard-mini';
+
+    const oldEl = makeClueCardStaticViewEl({
+      cardIdx,
+      title: oldData.title,
+      items: oldData.items,
+      pickedItemIdx,
+    });
+
+    oldEl.style.transform = 'translate(-6px,-10px)';
+    oldEl.style.boxShadow = '0 18px 40px rgba(0,0,0,.35)';
+
+    mini.appendChild(oldEl);
+    ov.appendChild(mini);
+    hostCardEl.appendChild(ov);
+
+    hostCardEl.classList.add('discard-open');
+
+    opened.push({ hostCardEl, overlayEl: ov, cardIdx });
+
+    requestAnimationFrame(() => {
+      oldEl.querySelectorAll('.clue-title').forEach(t => applyClueTitleRule(t));
+      oldEl.querySelectorAll('.clue-item').forEach(it => fitClueItemTextRow(it));
+      updateDchipOverlapInRow(oldEl);
+    });
+  }
+
+  state._discardOverlays = opened;
+
+  if (!state._discardOverlayCloseBound){
+    state._discardOverlayCloseBound = true;
+
+    document.addEventListener('pointerdown', (e) => {
+      if (!state._discardOverlays || !state._discardOverlays.length) return;
+
+      const t = e.target;
+      for (const it of state._discardOverlays){
+        const host = it.hostCardEl;
+        const overlay = it.overlayEl;
+        if (host && host.contains(t)) return;
+        if (overlay && overlay.contains(t)) return;
+      }
+      closeDiscardOverlays();
+    }, true);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDiscardOverlays();
+    });
+  }
+}
+
+/* =========================
+   Replace / Swap（最低限）
+   ========================= */
+async function setReplacePreviewToDB(cardIdxOrNull){
+  if (!state.roomCode) return;
+  const forensicId = findPlayerIdByRole("法医学者");
+  if (!forensicId) return;
+  if (state.userId !== forensicId) return;
+
+  const pRef = ref(db, `rooms/${state.roomCode}/forensicReplacePreview`);
+  if (cardIdxOrNull === null || typeof cardIdxOrNull === 'undefined'){
+    remove(pRef).catch(()=>{});
+  } else {
+    set(pRef, { cardIdx: Number(cardIdxOrNull), startedAt: Date.now() }).catch(()=>{});
+  }
+}
+function openReplaceConfirm({cardIdx, title, el}){
+  state._pendingReplace = { cardIdx, title, el };
+  setReplacePreviewToDB(cardIdx);
+  applyReplacePreviewToDOM(true);
+
+  replaceMessage.textContent = `「${title}」のカードを変えますか。`;
+  replaceBackdrop.classList.remove('hidden');
+  replaceBackdrop.setAttribute('aria-hidden','false');
+}
+function closeReplaceConfirm(){
+  replaceBackdrop.classList.add('hidden');
+  replaceBackdrop.setAttribute('aria-hidden','true');
+
+  state._pendingReplace = null;
+  setReplacePreviewToDB(null);
+  applyReplacePreviewToDOM(true);
+}
+replaceBackdrop.addEventListener('click', (e) => {
+  if (e.target === replaceBackdrop) closeReplaceConfirm();
+});
+btnReplaceNo.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeReplaceConfirm();
+});
+btnReplaceYes.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  await doReplaceConfirmed();
+});
+
+async function doReplaceConfirmed(){
+  if (!state._pendingReplace || !state.roomCode) { closeReplaceConfirm(); return; }
+  if (!canForensicSwapNow()) { closeReplaceConfirm(); return; }
+
+  const { cardIdx } = state._pendingReplace;
+  const poolSlot = cardIdx - 2;
+  if (poolSlot < 0 || poolSlot > 3){
+    closeReplaceConfirm();
+    return;
+  }
+
+  await ensureForensicCluesInDB();
+  closeReplaceConfirm();
+
+  const cRef = ref(db, `rooms/${state.roomCode}/forensicClues`);
+  const snap = await get(cRef);
+  const data = snap.val() || {};
+  let poolIds = Array.isArray(data.poolIds) ? data.poolIds.slice() : calcInitialPoolIds();
+
+  const used = new Set(poolIds);
+  const available = [];
+  for (let i=0;i<FORENSIC_POOL.length;i++){
+    if (!used.has(i)) available.push(i);
+  }
+  if (!available.length) return;
+
+  const stageRef = ref(db, `rooms/${state.roomCode}/discussionStage`);
+  const stageSnap = await get(stageRef);
+  const currentStage = Number(stageSnap.val() || 1);
+  const nextStage = currentStage + 1;
+
+  const seedKey = `${state.roomCode}|${state._lastDealStamp}|swap|stage:${nextStage}|slot:${poolSlot}`;
+  const rnd = mulberry32(hashStrToInt(seedKey));
+  const pickIdx = Math.floor(rnd() * available.length);
+  const newId = available[pickIdx];
+
+  const oldPoolId = poolIds[poolSlot];
+  let oldPicked = null;
+  {
+    const pSnap = await get(ref(db, `rooms/${state.roomCode}/forensicPick/${cardIdx}`));
+    if (pSnap.exists()){
+      const v = pSnap.val();
+      if (v === null || typeof v === 'undefined') oldPicked = null;
+      else oldPicked = Number(v);
+    }
+  }
+  await set(ref(db, `rooms/${state.roomCode}/forensicDiscarded/${cardIdx}`), {
+    poolId: Number(oldPoolId),
+    pickedItemIdx: (oldPicked === null || !Number.isFinite(oldPicked)) ? null : Number(oldPicked),
+    discardedAt: Date.now(),
+    stage: nextStage
+  });
+
+  if (state.forensicPick && (String(cardIdx) in state.forensicPick)){
+    delete state.forensicPick[String(cardIdx)];
+  }
+  state._swapIgnorePickCards.add(cardIdx);
+
+  const startedAt = Date.now();
+  await set(ref(db, `rooms/${state.roomCode}/forensicSwapAnim`), {
+    cardIdx,
+    poolSlot,
+    newPoolId: newId,
+    startedAt
+  });
+
+  await remove(ref(db, `rooms/${state.roomCode}/forensicPick/${cardIdx}`));
+
+  poolIds[poolSlot] = newId;
+  await set(cRef, { poolIds, updatedAt: Date.now() });
+
+  await set(stageRef, nextStage);
+
+  closeDiscardOverlays();
+}
+
+/* swap animation */
+function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+function enterSwapAnimatingWindow(){
+  state._swapAnimating = true;
+  state._swapAnimEndAt = Date.now() + 750;
+  clearTimeout(enterSwapAnimatingWindow._t);
+  enterSwapAnimatingWindow._t = setTimeout(() => {
+    state._swapAnimating = false;
+    state._swapIgnorePickCards.clear();
+
+    if (state._pendingRenderAfterSwap){
+      state._pendingRenderAfterSwap = false;
+      renderPlayersVertical(latestPlayers);
+    } else {
+      renderPlayersVertical(latestPlayers);
+    }
+    applyReplacePreviewToDOM();
+  }, 780);
+}
+async function playSwapAnimationForEveryone({ cardIdx, newPoolId }){
+  enterSwapAnimatingWindow();
+  state._swapIgnorePickCards.add(cardIdx);
+
+  const cardEl = findClueCardElement(cardIdx);
+  if (!cardEl) {
+    state._pendingRenderAfterSwap = true;
+    return;
+  }
+
+  cardEl.classList.remove('preview-lift');
+  await animateSwapCardInPlace(cardEl, newPoolId);
+}
+async function animateSwapCardInPlace(cardEl, newPoolId){
+  cardEl.classList.remove('swap-up','swap-in');
+  void cardEl.offsetWidth;
+  cardEl.classList.add('swap-up');
+  await wait(290);
+
+  const newData = FORENSIC_POOL[newPoolId];
+  if (newData){
+    const titleEl = cardEl.querySelector('.clue-title');
+    const titleText = cardEl.querySelector('.clue-title-text');
+    if (titleEl && titleText){
+      titleEl.setAttribute('data-title', newData.title);
+      titleText.textContent = newData.title;
+      applyClueTitleRule(titleEl);
+    }
+
+    const list = cardEl.querySelector('.clue-items');
+    if (list){
+      list.innerHTML = '';
+      for (let i=0;i<newData.items.length;i++){
+        const it = newData.items[i];
+
+        const row = document.createElement('div');
+        row.className = 'clue-item';
+        row.setAttribute('data-item-idx', String(i));
+
+        if (state.isForensicViewer){
+          const pick = document.createElement('div');
+          pick.className = 'clue-pick';
+
+          const btn = document.createElement('button');
+          btn.className = 'clue-dotbtn';
+          btn.title = '選択';
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            const idx = Number(cardEl.getAttribute('data-card-idx') || 0);
+            setForensicPick(idx, i);
+          };
+          pick.appendChild(btn);
+          row.appendChild(pick);
+        }
+
+        const tx = document.createElement('span');
+        tx.className = 'clue-item-text';
+        tx.textContent = it;
+
+        row.appendChild(tx);
+        list.appendChild(row);
+      }
+    }
+
+    requestAnimationFrame(() => {
+      const clueRow = cardEl.closest('.clue-row');
+      if (clueRow){
+        fitClueItemsInRow(clueRow);
+        updateDchipOverlapInRow(clueRow);
+      }
+    });
+  }
+
+  cardEl.classList.remove('swap-up');
+  void cardEl.offsetWidth;
+  cardEl.classList.add('swap-in');
+  await wait(340);
+  cardEl.classList.remove('swap-in');
+
+  applyReplacePreviewToDOM();
+}
+
+/* preview-lift apply */
+function applyReplacePreviewToDOM(forceImmediate=false){
+  document.querySelectorAll('.forensic-container .clue-card.preview-lift')
+    .forEach(el => el.classList.remove('preview-lift'));
+
+  if (!forceImmediate && state._swapAnimating && Date.now() < state._swapAnimEndAt){
+    return;
+  }
+
+  const prev = state.forensicReplacePreview;
+  const idx = prev ? Number(prev.cardIdx) : NaN;
+  if (!Number.isFinite(idx)) return;
+
+  const cardEl = findClueCardElement(idx);
+  if (cardEl) cardEl.classList.add('preview-lift');
+}
+
+/* drag handlers（Sceneカード除外、クリックは捨て札オーバーレイ） */
+function attachSwapDragHandlers(clueRow){
+  if (!clueRow) return;
+
+  const cards = Array.from(clueRow.querySelectorAll('.clue-card'));
+  const DRAG_THRESHOLD_PX = 7;
+
+  for (const card of cards){
+    if (card._swapDragBound) continue;
+    if (card.classList.contains('scene-card')) continue;
+
+    card._swapDragBound = true;
+
+    card.addEventListener('pointerdown', (e) => {
+      if (e.target && e.target.closest && e.target.closest('.clue-dotbtn')) return;
+
+      const myIdx = Number(card.getAttribute('data-card-idx') || 0);
+      const enabled = canForensicSwapNow();
+      const isTarget = (myIdx >= 2 && myIdx <= 5);
+
+      e.preventDefault();
+
+      const r = card.getBoundingClientRect();
+      const offX = e.clientX - r.left;
+      const offY = e.clientY - r.top;
+
+      state._drag = {
+        mode: 'pending',
+        pointerId: e.pointerId,
+        card,
+        clueRow,
+        startX: e.clientX,
+        startY: e.clientY,
+        offX, offY,
+        originRect: r,
+        enabledDrag: !!(enabled && isTarget),
+        hole: null,
+        parent: null,
+        nextSibling: null,
+      };
+
+      card.setPointerCapture(e.pointerId);
+    });
+
+    card.addEventListener('pointermove', (e) => {
+      const d = state._drag;
+      if (!d || d.card !== card || d.pointerId !== e.pointerId) return;
+
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      const dist = Math.hypot(dx, dy);
+
+      if (d.mode === 'pending'){
+        if (d.enabledDrag && dist >= DRAG_THRESHOLD_PX){
+          startDragNow(d, e.clientX, e.clientY);
+        }
+        return;
+      }
+
+      if (d.mode === 'dragging'){
+        moveDragNow(d, e.clientX, e.clientY);
+      }
+    });
+
+    card.addEventListener('pointerup', (e) => {
+      const d = state._drag;
+      if (!d || d.card !== card || d.pointerId !== e.pointerId) return;
+
+      if (d.mode === 'pending'){
+        state._drag = null;
+        toggleAllDiscardOverlays();
+        return;
+      }
+
+      if (d.mode === 'dragging'){
+        finishDragNow(d);
+        state._drag = null;
+        return;
+      }
+
+      state._drag = null;
+    });
+
+    card.addEventListener('pointercancel', (e) => {
+      const d = state._drag;
+      if (!d || d.card !== card || d.pointerId !== e.pointerId) return;
+      if (d.mode === 'dragging'){
+        cancelDragBackNow(d);
+      }
+      state._drag = null;
+    });
+  }
+
+  function startDragNow(d, x, y){
+    const card = d.card;
+    const parent = card.parentElement;
+    const nextSibling = card.nextSibling;
+
+    const r = d.originRect;
+
+    const hole = document.createElement('div');
+    hole.className = 'clue-hole';
+    hole.style.width  = `${r.width}px`;
+    hole.style.height = `${r.height}px`;
+
+    if (parent){
+      parent.insertBefore(hole, nextSibling);
+    }
+
+    d.mode = 'dragging';
+    d.parent = parent;
+    d.nextSibling = nextSibling;
+    d.hole = hole;
+
+    card.style.position = 'fixed';
+    card.style.left = `${r.left}px`;
+    card.style.top = `${r.top}px`;
+    card.style.width = `${r.width}px`;
+    card.style.height = `${r.height}px`;
+    card.style.margin = '0';
+    card.style.transform = 'translate3d(0,0,0)';
+    card.classList.add('dragging');
+
+    card.classList.remove('preview-lift');
+    moveDragNow(d, x, y);
+  }
+
+  function moveDragNow(d, x, y){
+    const left = x - d.offX;
+    const top  = y - d.offY;
+    d.card.style.left = `${left}px`;
+    d.card.style.top  = `${top}px`;
+  }
+
+  function finishDragNow(d){
+    const clueRow = d.clueRow;
+    const rowRect = clueRow.getBoundingClientRect();
+    const cardRect = d.card.getBoundingClientRect();
+
+    const cx = cardRect.left + cardRect.width / 2;
+    const cy = cardRect.top  + cardRect.height / 2;
+
+    const outside =
+      (cx < rowRect.left) ||
+      (cx > rowRect.right) ||
+      (cy < rowRect.top) ||
+      (cy > rowRect.bottom);
+
+    restoreCardToFlowNow(d);
+
+    if (outside){
+      const title = d.card.querySelector('.clue-title-text')?.textContent || '';
+      const idx = Number(d.card.getAttribute('data-card-idx') || 0);
+      openReplaceConfirm({ cardIdx: idx, title, el: d.card });
+    }
+  }
+
+  function cancelDragBackNow(d){
+    restoreCardToFlowNow(d);
+  }
+
+  function restoreCardToFlowNow(d){
+    d.card.classList.remove('dragging');
+
+    d.card.style.position = '';
+    d.card.style.left = '';
+    d.card.style.top = '';
+    d.card.style.width = '';
+    d.card.style.height = '';
+    d.card.style.margin = '';
+    d.card.style.transform = '';
+
+    if (d.hole && d.hole.parentNode){
+      d.hole.parentNode.replaceChild(d.card, d.hole);
+    } else if (d.parent){
+      if (d.nextSibling) d.parent.insertBefore(d.card, d.nextSibling);
+      else d.parent.appendChild(d.card);
+    }
+
+    applyReplacePreviewToDOM();
+  }
+}
+
+/* render helpers */
 function makeCardEl(kind, name){
   const d = document.createElement('div');
   d.className = `card ${kind}`;
+
+  const inner = document.createElement('div');
+  inner.className = 'card-inner';
 
   const img = document.createElement('img');
   const fileName = name.replaceAll('N\\', '').replaceAll('\n', '');
@@ -816,13 +3135,13 @@ function makeCardEl(kind, name){
 
   const lines = setNameTagLines(tag, name);
 
-  d.appendChild(img);
-  d.appendChild(tag);
+  inner.appendChild(img);
+  inner.appendChild(tag);
+  d.appendChild(inner);
 
   fitNameTag(tag, lines);
   return d;
 }
-
 function makeRoleWrap(playerName, isMe, showFace, roleName){
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
@@ -851,245 +3170,551 @@ function makeRoleWrap(playerName, isMe, showFace, roleName){
   wrap.appendChild(role);
   return wrap;
 }
+function makeClueCardEl(cardIdx, title, items){
+  const d = document.createElement('div');
+  d.className = 'clue-card';
+  d.setAttribute('data-card-idx', String(cardIdx));
 
+  const isSceneCard = (cardIdx === 1);
+  const sceneSelectedItems = isSceneCard ? getSceneCardItemsOrNull() : null;
+  const sceneSelected = isSceneCard ? !!sceneSelectedItems : false;
+
+  if (isSceneCard){
+    d.classList.add('scene-card');
+    if (!sceneSelected){
+      d.classList.add('scene-unselected');
+    }
+    d.addEventListener('click', (e) => {
+      if (e.target && e.target.closest && e.target.closest('.clue-dotbtn')) return;
+      e.stopPropagation();
+      openScenePicker();
+    });
+  }
+
+  const t = document.createElement('div');
+  t.className = 'clue-title';
+  t.setAttribute('data-title', title);
+
+  const tt = document.createElement('span');
+  tt.className = 'clue-title-text';
+  tt.textContent = title;
+  t.appendChild(tt);
+
+  d.appendChild(t);
+
+  if (isSceneCard && !sceneSelected){
+    return d;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'clue-items';
+
+  const ignorePick = state._swapIgnorePickCards.has(cardIdx);
+  const pickedIdx = ignorePick
+    ? null
+    : ((state.forensicPick && (state.forensicPick[String(cardIdx)] ?? state.forensicPick[cardIdx])) ?? null);
+
+  for (let i=0;i<items.length;i++){
+    const it = items[i];
+
+    const row = document.createElement('div');
+    row.className = 'clue-item';
+    row.setAttribute('data-item-idx', String(i));
+
+    const pick = document.createElement('div');
+    pick.className = 'clue-pick';
+
+    if (!ignorePick && pickedIdx === i){
+      const chip = document.createElement('img');
+      chip.className = 'clue-chip';
+      chip.src = 'dchip.png';
+      chip.alt = 'dchip';
+      chip.loading = 'eager';
+      pick.appendChild(chip);
+
+      if (state.isForensicViewer){
+        const btn = document.createElement('button');
+        btn.className = 'clue-dotbtn';
+        btn.style.opacity = '0';
+        btn.style.position = 'absolute';
+        btn.style.inset = '0';
+        btn.style.border = 'none';
+        btn.style.background = 'transparent';
+        btn.style.cursor = 'pointer';
+        btn.onclick = (e) => { e.stopPropagation(); setForensicPick(cardIdx, i); };
+        pick.appendChild(btn);
+      }
+    } else {
+      if (state.isForensicViewer){
+        const btn = document.createElement('button');
+        btn.className = 'clue-dotbtn';
+        btn.title = '選択';
+        btn.onclick = (e) => { e.stopPropagation(); setForensicPick(cardIdx, i); };
+        pick.appendChild(btn);
+      }
+    }
+
+    if (pick.childNodes.length) row.appendChild(pick);
+
+    const tx = document.createElement('span');
+    tx.className = 'clue-item-text';
+    tx.textContent = it;
+
+    row.appendChild(tx);
+    list.appendChild(row);
+  }
+
+  d.appendChild(list);
+  return d;
+}
+
+/* =========================
+   手札選択（パルス・ハイライト）
+   ========================= */
+function isPrivilegedViewerRole(){
+  const r = getViewerRoleName();
+  return (r === '法医学者' || r === '殺人犯' || r === 'Madman' || r === 'Cunning Madman');
+}
+function getChooserRoleKeyForSelf(){
+  const r = getViewerRoleName();
+  if (r === '殺人犯') return 'murderer';
+  if (r === 'Cunning Madman') return 'cunning';
+  return null;
+}
+function shouldPulseForSelf(kind){
+  if (!state._introDone) return false;
+  if (!state._lastDealStamp) return false;
+
+  const roleKey = getChooserRoleKeyForSelf();
+  if (!roleKey) return false;
+
+  if (isRoleSelectionLocked(roleKey)) return false;
+
+  const sel = getSelection(roleKey, kind);
+  return !sel;
+}
+function applySelectionClassesToCard(cardEl, {viewerPrivileged, ownerId, kind, idxInRow}){
+  if (!viewerPrivileged) return;
+
+  const murdererId = findPlayerIdByRole('殺人犯');
+  const cunningId  = findPlayerIdByRole('Cunning Madman');
+
+  if (ownerId && murdererId && ownerId === murdererId){
+    const mSel = getSelection('murderer', kind);
+    if (mSel && mSel.idx === idxInRow) cardEl.classList.add('pick-murderer');
+  }
+  if (ownerId && cunningId && ownerId === cunningId){
+    const cSel = getSelection('cunning', kind);
+    if (cSel && cSel.idx === idxInRow) cardEl.classList.add('pick-cunning');
+  }
+}
+
+/* render main */
 function renderPlayersVertical(players){
+  if (state._swapAnimating && Date.now() < state._swapAnimEndAt){
+    state._pendingRenderAfterSwap = true;
+    return;
+  }
+
+  closeDiscardOverlays();
+
   playersColumn.innerHTML = '';
-  if (!players || !players.length) return;
+  forensicColumn.innerHTML = '';
+  forensicDock.classList.add('hidden');
 
-  players.forEach(p => {
-    const block = document.createElement('div');
-    block.className = 'player-block';
+  if (!players || !players.length){
+    updateBottomControlsPosition();
+    return;
+  }
 
-    const badge = document.createElement('div');
-    badge.className = 'player-badge' + (p.id === state.userId ? ' me' : '');
-    badge.textContent = p.name || '名無し';
-    block.appendChild(badge);
+  state.isForensicViewer = (state.userId === findPlayerIdByRole("法医学者"));
 
-    const dealArea = document.createElement('div');
-    dealArea.className = 'deal-area';
+  const ordered = arrangePlayersForView(players);
+  const forensicId = findPlayerIdByRole("法医学者");
+  let forensicPlayer = null;
+  if (forensicId){
+    forensicPlayer = ordered.find(p => p.id === forensicId) || null;
+  }
 
-    const deal = (state.deal && state.deal[p.id]) ? state.deal[p.id] : null;
+  const mainList = forensicPlayer
+    ? ordered.filter(p => p.id !== forensicId)
+    : ordered.slice();
 
-    const showRoleFace = (p.id === state.userId);
-    const roleName = deal ? (deal.role || '') : '';
-    dealArea.appendChild(makeRoleWrap(p.name, p.id === state.userId, showRoleFace, roleName));
-
-    const twoRows = document.createElement('div');
-    twoRows.className = 'two-rows';
-
-    const rowW = document.createElement('div');
-    rowW.className = 'row4';
-    const rowE = document.createElement('div');
-    rowE.className = 'row4';
-
-    if (deal && Array.isArray(deal.weapons)){
-      deal.weapons.slice(0,4).forEach(name => rowW.appendChild(makeCardEl('weapon', name)));
-    }
-    if (deal && Array.isArray(deal.evidences)){
-      deal.evidences.slice(0,4).forEach(name => rowE.appendChild(makeCardEl('evidence', name)));
-    }
-
-    twoRows.appendChild(rowW);
-    twoRows.appendChild(rowE);
-
-    dealArea.appendChild(twoRows);
-    block.appendChild(dealArea);
-
+  mainList.forEach(p => {
+    const block = buildPlayerBlock(p, false);
     playersColumn.appendChild(block);
   });
 
-  // ★ 描画後に2列スケールを再計算（折り返し無しで必ず収める）
-  requestAnimationFrame(() => computeAndApplyTwoColScale());
-}
-
-/* join */
-const urlParams = new URLSearchParams(window.location.search);
-const roomFromUrl = urlParams.get('room');
-if(roomFromUrl) inputCode.value = roomFromUrl;
-
-btnJoin.addEventListener('click', async () => {
-  state.userName = inputName.value || '名無し';
-  state.roomCode = inputCode.value.trim() || generateRoomCode();
-
-  await set(ref(db, `rooms/${state.roomCode}/users/${state.userId}`), {
-    name: state.userName,
-    joinedAt: Date.now()
-  });
-
-  const roomRef = ref(db, `rooms/${state.roomCode}`);
-  const roomSnap = await get(roomRef);
-  const roomData = roomSnap.val();
-
-  if(!roomData || !roomData.hostId){
-    await update(roomRef, { hostId: state.userId });
-    state.isHost = true;
-  } else {
-    state.isHost = (roomData.hostId === state.userId);
+  if (forensicPlayer){
+    const fBlock = buildPlayerBlock(forensicPlayer, true);
+    forensicColumn.appendChild(fBlock);
+    forensicDock.classList.remove('hidden');
   }
 
-  updateHostUI();
+  requestAnimationFrame(() => {
+    computeAndApplyTwoColScale();
+    applyReplacePreviewToDOM();
+    updateBottomControlsPosition();   // ★ここで確定（ドックの有無/高さ反映）
+  });
+}
 
-  mainEl.classList.remove('prejoin');
-  mainEl.classList.add('joined');
+function buildPlayerBlock(p, isForensic){
+  const block = document.createElement('div');
+  block.className = 'player-block';
+  if (isForensic){
+    block.classList.add('forensic-block');
+    block.style.setProperty('--uiScale', '1');
+  }
 
+  const isMe = (p.id === state.userId);
+
+  const badge = document.createElement('div');
+  badge.className = 'player-badge' + (isMe ? ' me' : '');
+  badge.textContent = p.name || '名無し';
+  block.appendChild(badge);
+
+  const area = document.createElement('div');
+  area.className = 'deal-area';
+
+  const started = !!state._lastDealStamp;
+  const myDeal = state.deal?.[p.id] || null;
+  const roleName = myDeal?.role || '';
+
+  let showFace = false;
+  if (started){
+    showFace = isMe;
+    if (state.isForensicViewer) showFace = true; // 法医学者視点は全員の役職を表に
+  }
+
+  if (!isForensic){
+    area.appendChild(makeRoleWrap(p.name, isMe, showFace, roleName));
+
+    const two = document.createElement('div');
+    two.className = 'two-rows';
+
+    const weaponRow = document.createElement('div');
+    weaponRow.className = 'row4 weapon-row';
+
+    const evidenceRow = document.createElement('div');
+    evidenceRow.className = 'row4 evidence-row';
+
+    const viewerPriv = isPrivilegedViewerRole();
+    const roleKeySelf = getChooserRoleKeyForSelf();
+
+    const weapons = (myDeal?.weapons && Array.isArray(myDeal.weapons)) ? myDeal.weapons : [];
+    const evids   = (myDeal?.evidences && Array.isArray(myDeal.evidences)) ? myDeal.evidences : [];
+
+    weapons.forEach((name, idx) => {
+      const card = makeCardEl('weapon', name);
+
+      applySelectionClassesToCard(card, { viewerPrivileged: viewerPriv, ownerId: p.id, kind:'weapon', idxInRow: idx });
+
+      const canClick = isMe && (roleKeySelf === 'murderer' || roleKeySelf === 'cunning') && !isRoleSelectionLocked(roleKeySelf);
+      if (canClick){
+        card.classList.add('selectable');
+        if (shouldPulseForSelf('weapon')) card.classList.add('pulse');
+        card.addEventListener('click', () => setHandSelection(roleKeySelf, 'weapon', idx, name));
+      }
+      weaponRow.appendChild(card);
+    });
+
+    evids.forEach((name, idx) => {
+      const card = makeCardEl('evidence', name);
+
+      applySelectionClassesToCard(card, { viewerPrivileged: viewerPriv, ownerId: p.id, kind:'evidence', idxInRow: idx });
+
+      const canClick = isMe && (roleKeySelf === 'murderer' || roleKeySelf === 'cunning') && !isRoleSelectionLocked(roleKeySelf);
+      if (canClick){
+        card.classList.add('selectable');
+        if (shouldPulseForSelf('evidence')) card.classList.add('pulse');
+        card.addEventListener('click', () => setHandSelection(roleKeySelf, 'evidence', idx, name));
+      }
+      evidenceRow.appendChild(card);
+    });
+
+    two.appendChild(weaponRow);
+    two.appendChild(evidenceRow);
+    area.appendChild(two);
+  } else {
+    // 法医学者テーブル（clue cards）
+    const two = document.createElement('div');
+    two.className = 'two-rows';
+
+    const clueRow = document.createElement('div');
+    clueRow.className = 'clue-row';
+
+    const cards = getVisibleClueCardsForEveryone();
+    for (let i=0;i<cards.length;i++){
+      const c = cards[i];
+      const el = makeClueCardEl(i, c.title, c.items);
+      clueRow.appendChild(el);
+    }
+
+    two.appendChild(clueRow);
+    area.appendChild(two);
+
+    requestAnimationFrame(() => {
+      fitClueTitlesInRow(clueRow);
+      fitClueItemsInRow(clueRow);
+      updateDchipOverlapInRow(clueRow);
+      attachSwapDragHandlers(clueRow);
+      applyReplacePreviewToDOM();
+    });
+  }
+
+  block.appendChild(area);
+  return block;
+}
+
+/* =========================
+   join / start / reset / copy
+   ========================= */
+function getRoomUrl(code){
+  const u = new URL(location.href);
+  u.searchParams.set('room', code);
+  return u.toString();
+}
+
+async function joinRoom(){
+  const name = (inputName.value || '').trim().slice(0,4);
+  const code = (inputCode.value || '').trim().toUpperCase() || generateRoomCode(6);
+  if (!name) return;
+
+  state.userName = name;
+  state.roomCode = code;
+  saveNameToLS(name);
+
+  // room init (host assignment)
+  const roomRef = ref(db, `rooms/${code}`);
+  const snap = await get(roomRef);
+  const room = snap.val() || {};
+
+  if (!room.hostId){
+    await update(roomRef, { hostId: state.userId, createdAt: Date.now() }).catch(()=>{});
+  }
+
+  // ensure minimal nodes
+  await update(roomRef, { updatedAt: Date.now() }).catch(()=>{});
+
+  // UI
   joinBox.classList.add('hidden');
   lobby.classList.remove('hidden');
   lobby.classList.add('entered');
+  mainEl.classList.remove('prejoin');
+  mainEl.classList.add('joined');
 
+  refreshRoomLabels();
+  updateHostUI();
+
+  // subscribe
   subscribeRoom();
   subscribeHostState();
   subscribePlayers();
   subscribeDeal();
+  subscribeForensicPick();
+  subscribeForensicClues();
+  subscribeForensicSwapAnim();
+  subscribeDiscussionStage();
+  subscribeForensicReplacePreview();
+  subscribeForensicDiscarded();
+  subscribeRoleOptions();
+  subscribeSelections();
+  subscribePhase();
+  subscribeSceneSelection();
 
-  syncSeatUI();
-});
+  // seat UI
+  await syncSeatUI().catch(()=>{});
+  updateBottomControlsPosition();
+}
 
-/* copy */
+btnJoin.addEventListener('click', () => joinRoom().catch(console.error));
+inputName.value = loadNameFromLS();
+{
+  const params = new URLSearchParams(location.search);
+  const room = (params.get('room') || '').toUpperCase();
+  if (room) inputCode.value = room;
+}
+
+/* COPY */
 copyLinkBtn.addEventListener('click', async () => {
-  const url = `${location.origin}${location.pathname}?room=${state.roomCode}`;
-  try {
+  if (!state.roomCode) return;
+  const url = getRoomUrl(state.roomCode);
+  try{
     await navigator.clipboard.writeText(url);
     copyLinkBtn.classList.add('copied');
     copyLinkBtn.textContent = 'COPIED';
-    inputCode.value = state.roomCode;
-    setTimeout(()=>{
+    setTimeout(() => {
       copyLinkBtn.classList.remove('copied');
-      copyLinkBtn.textContent='COPY';
-    },1500);
-  } catch {
-    prompt('コピーできません。手動でコピーしてください', url);
+      copyLinkBtn.textContent = 'COPY';
+    }, 900);
+  }catch{
+    prompt('コピーしてください', url);
   }
 });
 
-/* kick dialog handlers */
-kickDialog.addEventListener('click', (e) => {
-  if (e.target === kickDialog) {
-    kickDialog.classList.add('hidden');
-    pendingSeatIndexToSteal = null;
-    pendingSeatPlayerIdToSteal = null;
-  }
-});
-btnKickNo.addEventListener('click', (e) => {
+/* Settings pop open/close */
+hostSettingsBtn.addEventListener('click', (e) => {
   e.stopPropagation();
-  kickDialog.classList.add('hidden');
-  pendingSeatIndexToSteal = null;
-  pendingSeatPlayerIdToSteal = null;
-});
-btnKickYes.addEventListener('click', async (e) => {
-  e.stopPropagation();
-  if (pendingSeatIndexToSteal == null || !state.roomCode) {
-    kickDialog.classList.add('hidden');
-    return;
-  }
-
-  const seatIndex = pendingSeatIndexToSteal;
-  const roomRef = ref(db, `rooms/${state.roomCode}`);
-  const roomSnap = await get(roomRef);
-  const roomData = roomSnap.val() || {};
-
-  const tRef = ref(db, `rooms/${state.roomCode}/tables/${seatIndex}`);
-  await set(tRef, { playerId: state.userId, playerName: state.userName || '名無し' });
-
-  if (roomData.hostId && pendingSeatPlayerIdToSteal && roomData.hostId === pendingSeatPlayerIdToSteal) {
-    await update(roomRef, { hostId: state.userId });
-  }
-
-  state.seatedTable = seatIndex;
-
-  kickDialog.classList.add('hidden');
-  pendingSeatIndexToSteal = null;
-  pendingSeatPlayerIdToSteal = null;
-
-  seatPop.classList.add('hidden');
-});
-
-/* host settings */
-hostSettingsBtn.addEventListener('click', () => {
   if (!state.isHost) return;
   startPop.classList.toggle('hidden');
 });
-btnStartPopClose.addEventListener('click', () => {
+btnStartPopClose.addEventListener('click', (e) => {
+  e.stopPropagation();
   startPop.classList.add('hidden');
 });
+document.addEventListener('pointerdown', (e) => {
+  if (startPop.classList.contains('hidden')) return;
+  if (e.target === hostSettingsBtn) return;
+  if (startPop.contains(e.target)) return;
+  startPop.classList.add('hidden');
+}, true);
 
-/* 配布 */
-async function dealToAllPlayers(){
-  if (!state.roomCode) return;
+/* Host reset */
+btnResetRoom.addEventListener('click', async () => {
+  if (!state.isHost || !state.roomCode) return;
+  const code = state.roomCode;
 
-  const tablesSnap = await get(ref(db, `rooms/${state.roomCode}/tables`));
-  const tables = tablesSnap.val() || {};
-  const players = Object.entries(tables)
-    .map(([seatIndex, t]) => (t && t.playerId ? {
-      id: t.playerId,
-      name: t.playerName || '名無し',
-      seatIndex: Number(seatIndex)
-    } : null))
-    .filter(Boolean)
-    .sort((a,b) => a.seatIndex - b.seatIndex);
+  const roomRef = ref(db, `rooms/${code}`);
+  const resetAt = Date.now();
 
-  const n = players.length;
-  if (n <= 0) return;
+  await update(roomRef, {
+    maxPlayers: null,
+    resetAt,
+    phase: null
+  }).catch(()=>{});
 
-  const uniqW = Array.from(new Set(WEAPONS));
-  const uniqE = Array.from(new Set(EVIDENCES));
+  // clear subtrees
+  await remove(ref(db, `rooms/${code}/deal`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/selections`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/forensicPick`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/forensicClues`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/forensicSwapAnim`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/forensicReplacePreview`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/forensicDiscarded`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/sceneSelection`)).catch(()=>{});
+  await set(ref(db, `rooms/${code}/discussionStage`), 1).catch(()=>{});
 
-  const sw = shuffle(uniqW);
-  const se = shuffle(uniqE);
+  // kick everyone seats
+  await remove(ref(db, `rooms/${code}/tables`)).catch(()=>{});
 
-  const roles = [];
-  roles.push("殺人犯");
-  roles.push("法医学者");
-  while (roles.length < n) roles.push("捜査官");
-  const sRoles = shuffle(roles);
+  // local
+  handleRoomResetLocal(resetAt);
+});
 
-  const deal = {};
-  let wIdx = 0;
-  let eIdx = 0;
+/* Host game start (deal) */
+function buildRoleAssignment(playerIds, roleOptions){
+  const ids = playerIds.slice();
+  const rnd = mulberry32(hashStrToInt(`${state.roomCode}|${Date.now()}|roles`));
+  ids.sort(() => rnd() - 0.5);
 
-  for (let i=0;i<n;i++){
-    const pid = players[i].id;
+  const forensicId = ids[0] || null;
+  const murdererId = ids[1] || ids[0] || null;
 
-    const weapons = [];
-    const evidences = [];
+  const roles = {};
+  if (forensicId) roles[forensicId] = "法医学者";
+  if (murdererId) roles[murdererId] = "殺人犯";
 
-    for (let k=0;k<4;k++){
-      if (sw.length) weapons.push(sw[wIdx % sw.length]);
-      wIdx++;
-    }
-    for (let k=0;k<4;k++){
-      if (se.length) evidences.push(se[eIdx % se.length]);
-      eIdx++;
-    }
+  const rest = ids.filter(x => x !== forensicId && x !== murdererId);
 
-    deal[pid] = {
-      role: sRoles[i],
-      weapons,
-      evidences,
-      dealtAt: Date.now()
-    };
+  // base investigators
+  for (const pid of rest){
+    roles[pid] = "捜査官";
   }
 
-  await set(ref(db, `rooms/${state.roomCode}/deal`), deal);
+  // optional: assign at most 1 person each role card (simple model)
+  const optList = [];
+  if (roleOptions?.madman) optList.push("Madman");
+  if (roleOptions?.cunning_madman) optList.push("Cunning Madman");
+  if (roleOptions?.special_police) optList.push("Special Police");
+  if (roleOptions?.lawyer) optList.push("Lawyer");
+
+  let pool = rest.slice();
+  for (const r of optList){
+    if (!pool.length) break;
+    const pick = pool.splice(Math.floor(rnd()*pool.length), 1)[0];
+    roles[pick] = r;
+  }
+
+  return roles;
+}
+
+function dealHandForPlayers(playerIds){
+  const dealtAt = Date.now();
+  const seedW = `${state.roomCode}|${dealtAt}|weapons`;
+  const seedE = `${state.roomCode}|${dealtAt}|evidences`;
+
+  const wDeck = seededShuffle(WEAPONS, seedW);
+  const eDeck = seededShuffle(EVIDENCES, seedE);
+
+  const per = 4; // 4 + 4
+  const out = {};
+  let wi = 0, ei = 0;
+
+  for (const pid of playerIds){
+    out[pid] = {
+      weapons: wDeck.slice(wi, wi+per),
+      evidences: eDeck.slice(ei, ei+per),
+      dealtAt
+    };
+    wi += per; ei += per;
+  }
+  return { out, dealtAt };
 }
 
 btnGameStart.addEventListener('click', async () => {
-  if (!state.isHost) return;
-  await dealToAllPlayers();
-  startPop.classList.add('hidden');
+  if (!state.isHost || !state.roomCode) return;
+
+  const maxPlayers = state.room.maxPlayers || null;
+  if (!maxPlayers) return;
+
+  const tablesSnap = await get(ref(db, `rooms/${state.roomCode}/tables`));
+  const tables = tablesSnap.val() || {};
+  const players = Object.values(tables).filter(t => t && t.playerId).map(t => t.playerId);
+
+  if (players.length < 2) return;
+
+  const roles = buildRoleAssignment(players, state.roleOptions || {});
+  const { out, dealtAt } = dealHandForPlayers(players);
+
+  const dealObj = {};
+  for (const pid of players){
+    dealObj[pid] = {
+      role: roles[pid] || "捜査官",
+      weapons: out[pid].weapons,
+      evidences: out[pid].evidences,
+      dealtAt
+    };
+  }
+
+  await set(ref(db, `rooms/${state.roomCode}/deal`), dealObj).catch(()=>{});
+  await set(ref(db, `rooms/${state.roomCode}/phase`), 'choosing').catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/selections`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/forensicPick`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/forensicClues`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/sceneSelection`)).catch(()=>{});
+  await set(ref(db, `rooms/${state.roomCode}/discussionStage`), 1).catch(()=>{});
 });
 
-btnResetRoom.addEventListener('click', async () => {
-  if (!state.isHost || !state.roomCode) return;
-  const base = `rooms/${state.roomCode}`;
-  await Promise.all([
-    remove(ref(db, `${base}/maxPlayers`)),
-    remove(ref(db, `${base}/tables`)),
-    remove(ref(db, `${base}/deal`))
-  ]);
-  state.seatedTable = null;
-  startPop.classList.add('hidden');
-  await syncSeatUI();
+/* Kick dialog (unused placeholder) */
+btnKickNo.addEventListener('click', () => {
+  pendingSeatIndexToSteal = null;
+  pendingSeatPlayerIdToSteal = null;
+  kickDialog.classList.add('hidden');
 });
+btnKickYes.addEventListener('click', async () => {
+  // not used in this template
+  pendingSeatIndexToSteal = null;
+  pendingSeatPlayerIdToSteal = null;
+  kickDialog.classList.add('hidden');
+});
+
+/* Replace confirm close by Esc */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !replaceBackdrop.classList.contains('hidden')) closeReplaceConfirm();
+});
+
+/* 初期：help list */
+renderHelpList();
 </script>
 </body>
 </html>
