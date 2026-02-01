@@ -1082,7 +1082,7 @@
     height:260px;
     position:relative;
     border-radius:16px;
-    overflow:hidden;
+    overflow:visible;
     background:#fff;
     box-shadow:0 22px 48px rgba(0,0,0,.45);
     transform:translateZ(0);
@@ -1105,9 +1105,18 @@
     background-size:cover;
     background-position:center;
     opacity:0;
+    border-radius:16px;
+    background-color:#fff;
+  }
+  .witness-reveal-card.is-hit{
+    background:transparent;
+    box-shadow:none;
   }
   .witness-reveal-card.is-hit img{ opacity:0; }
-  .witness-reveal-card.is-hit .witness-card-half{ opacity:1; }
+  .witness-reveal-card.is-hit .witness-card-half{
+    opacity:1;
+    box-shadow:0 22px 48px rgba(0,0,0,.45);
+  }
   .witness-reveal-card.is-miss img{ opacity:1; }
   .witness-reveal-card.is-miss .witness-card-half{ opacity:0; }
 
@@ -1119,7 +1128,7 @@
     clip-path: polygon(0 62%, 100% 46%, 100% 100%, 0 100%);
     animation: witnessSplitBottom 1.6s ease forwards;
   }
-  .witness-reveal-card.animate.is-miss img{
+  .witness-reveal-card.animate.is-miss{
     animation: witnessDrop 2.1s ease forwards;
   }
   @keyframes witnessSplitTop{
@@ -1418,7 +1427,7 @@
 </div>
 
 <div id="witnessMurdererPop" class="witness-murderer-pop" aria-hidden="true">
-  <div class="msg">目撃者だと思う人物を選んでください。</div>
+  <div class="msg">目撃者だと思う人物のカードを選んでください。</div>
 </div>
 
 <div id="witnessRevealOverlay" class="witness-reveal-overlay" aria-hidden="true">
@@ -1515,7 +1524,7 @@ const ROLE_DEFS = [
 
   { key:'special_police',   name:'検査技師',           text:"" },
   { key:'lawyer',           name:'顧問探偵',           text:"回答バッジを失う代わりに、正体を明かすことができる。※正体を透かした時点で回答バッジは失い、回答後に透かすことは禁止。" },
-  { key:'insider',          name:'インサイドマン',     text:"ラウンドの終わりにこっそり選んだプレイヤーの回答バッジを失わせる。" },
+  { key:'insider',          name:'内通者',     text:"ラウンドの終わりにこっそり選んだプレイヤーの回答バッジを失わせる。" },
 ];
 const MURDER_SIDE_ROLES = new Set(['殺人犯', '共犯者', '狡猾な共犯者']);
 const WITNESS_REVEAL_DURATION_MS = 2300;
@@ -4549,7 +4558,7 @@ function buildRoleAssignment(playerIds, roleOptions){
   if (roleOptions?.bodyguard) optList.push("ボディガード");
   if (roleOptions?.special_police) optList.push("検査技師");
   if (roleOptions?.lawyer) optList.push("顧問探偵");
-  if (roleOptions?.insider) optList.push("インサイドマン");
+  if (roleOptions?.insider) optList.push("内通者");
 
   let pool = rest.slice();
   for (const r of optList){
