@@ -992,6 +992,7 @@
     padding:8px 12px;
     box-shadow:0 12px 28px rgba(0,0,0,.25);
   }
+  .answering-pop-actions[hidden]{ display:none; }
 
   .replace-backdrop{
     position:fixed; inset:0;
@@ -1261,7 +1262,7 @@
 <div id="answeringPop" class="answering-pop" aria-hidden="true">
   <div class="answering-pop-inner">
     <div id="answeringPopMessage" class="answering-pop-message">（プレイヤー名）が回答中...</div>
-    <div id="answeringHostActions" class="answering-pop-actions hidden">
+    <div id="answeringHostActions" class="answering-pop-actions" hidden>
       <button id="btnAnswerCorrect" class="btn primary small">正解</button>
       <button id="btnAnswerIncorrect" class="btn ghost small">不正解</button>
     </div>
@@ -1734,7 +1735,7 @@ function updateAnsweringPopup(){
   answeringPop.classList.toggle('show', shouldShow);
   answeringPop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
   answeringPop.classList.toggle('host', state.isHost && shouldShow);
-  answeringHostActions.classList.toggle('hidden', !(state.isHost && shouldShow));
+  answeringHostActions.hidden = !(state.isHost && shouldShow);
 }
 
 async function submitAnswerRequest(){
