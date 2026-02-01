@@ -126,7 +126,10 @@
      - ない：画面最下部に通常固定
      ※どちらも「画面（viewport）基準」で固定し、JSで法医学者ドックの高さ分だけ持ち上げる
      ========================= */
-  :root{ --forensicDockH: 0px; }
+  :root{
+    --forensicDockH: 0px;
+    --nameTagFontBase: 11px;
+  }
 
   .bottom-controls{
     position:fixed;
@@ -374,7 +377,7 @@
     padding: calc(3px * var(--uiScale)) calc(7px * var(--uiScale));
     border-radius: 999px;
     font-weight: 900;
-    font-size: calc(11px * var(--uiScale));
+    font-size: calc(var(--nameTagFontBase) * var(--uiScale));
     line-height: 1;
     letter-spacing:.02em;
     background: rgba(255,255,255,.92);
@@ -395,7 +398,7 @@
     flex:0 0 auto;
   }
   .identity-name-tag{
-    font-size: calc(10px * var(--uiScale));
+    font-size: calc(var(--nameTagFontBase) * var(--uiScale));
     font-weight:900;
     line-height:1.1;
     letter-spacing:.02em;
@@ -435,7 +438,7 @@
     gap: calc(4px * var(--uiScale));
   }
   .role-name-tag{
-    font-size: calc(10px * var(--uiScale));
+    font-size: calc(var(--nameTagFontBase) * var(--uiScale));
     font-weight:900;
     line-height:1.1;
     letter-spacing:.02em;
@@ -3563,16 +3566,17 @@ function buildPlayerBlock(p, isForensic){
     badgeGroup.appendChild(chip);
   }
 
-  if (!isForensic && started && showFace && document.body.classList.contains('two-col')){
-    const identityNames = getIdentityTagNames(roleName, revealRoleNames);
-    const identityText = getIdentityTagText(roleName, revealRoleNames);
-    if (identityText){
-      const tag = document.createElement('span');
-      const isMurderSide = identityNames.some((name) => MURDER_SIDE_ROLES.has(name));
-      tag.className = `identity-name-tag${isMurderSide ? ' murder-side' : ''}`;
-      tag.textContent = identityText;
-      badgeGroup.appendChild(tag);
-    }
+  const identityNames = getIdentityTagNames(roleName, revealRoleNames);
+  const identityText = getIdentityTagText(roleName, revealRoleNames);
+  const isMurderSide = identityNames.some((name) => MURDER_SIDE_ROLES.has(name));
+  const isTwoCol = document.body.classList.contains('two-col');
+  const shouldShowIdentityTag = started && identityText && (showFace || roleName === '法医学者');
+
+  if (shouldShowIdentityTag && (isTwoCol || isForensic || roleName === '法医学者')){
+    const tag = document.createElement('span');
+    tag.className = `identity-name-tag${isMurderSide ? ' murder-side' : ''}`;
+    tag.textContent = identityText;
+    badgeGroup.appendChild(tag);
   }
 
   block.appendChild(badgeGroup);
