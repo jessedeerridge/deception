@@ -4212,6 +4212,8 @@ btnGameStart.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${state.roomCode}/forensicPick`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/forensicClues`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/sceneSelection`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/answerUsed`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/answering`)).catch(()=>{});
   await set(ref(db, `rooms/${state.roomCode}/discussionStage`), 1).catch(()=>{});
 });
 
