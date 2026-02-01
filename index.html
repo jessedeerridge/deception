@@ -414,6 +414,36 @@
     gap:8px;
   }
 
+  .special-phase-pop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.4);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:320;
+  }
+  .special-phase-pop.hidden{ display:none; }
+  .special-phase-card{
+    background:#fff;
+    border-radius:14px;
+    padding:16px 18px;
+    width:min(360px, calc(100% - 40px));
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+    text-align:center;
+  }
+  .special-phase-title{
+    font-size:15px;
+    font-weight:900;
+    margin-bottom:8px;
+  }
+  .special-phase-message{
+    font-size:13px;
+    font-weight:700;
+    line-height:1.6;
+    white-space:pre-line;
+  }
+
   /* 自分のチップだけクリックできる見た目に */
   .answer-chip.clickable{
     cursor:pointer;
@@ -423,6 +453,16 @@
   }
   .answer-chip.clickable.used{
     cursor:default;
+  }
+  .answer-chip.insider-target{
+    cursor:pointer;
+    transform-origin:center center;
+    animation: insiderPulse 0.9s ease-in-out infinite;
+  }
+  @keyframes insiderPulse{
+    0%{ transform:scale(1); }
+    50%{ transform:scale(1.3); }
+    100%{ transform:scale(1); }
   }
   .lawyer-reveal-trigger{
     cursor:pointer;
@@ -1250,6 +1290,40 @@
   .card.pulse{
     animation: handPulse 0.85s ease-in-out infinite;
   }
+  .card.special-police-target{
+    cursor:pointer;
+    animation: specialPolicePulse 0.9s ease-in-out infinite;
+  }
+  @keyframes specialPolicePulse{
+    0%{ transform:scale(1); }
+    50%{ transform:scale(1.08); }
+    100%{ transform:scale(1); }
+  }
+  .special-police-mark{
+    position:absolute;
+    inset:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+    z-index:6;
+    color:#dc2626;
+    font-weight:900;
+  }
+  .special-police-mark.hit::before{
+    content:"";
+    width:100%;
+    height:100%;
+    border:6px solid rgba(220,38,38,.9);
+    border-radius:50%;
+    box-shadow:0 0 14px rgba(220,38,38,.35);
+  }
+  .special-police-mark.miss::before{
+    content:"✕";
+    font-size:72px;
+    line-height:1;
+    text-shadow:0 2px 12px rgba(220,38,38,.35);
+  }
   .card.pick-murderer{
     outline: 3px solid #ef4444;
     outline-offset: 2px;
@@ -1445,6 +1519,29 @@
   </div>
 </div>
 
+<div id="insiderConfirmPop" class="answer-confirm-pop hidden" role="dialog" aria-modal="true" aria-label="Insider badge confirm">
+  <div id="insiderConfirmText" class="answer-confirm-text">（プレイヤー名）のバッジを破棄しますか。</div>
+  <div class="answer-confirm-actions">
+    <button id="btnInsiderYes" class="btn primary">はい</button>
+    <button id="btnInsiderNo" class="btn ghost">いいえ</button>
+  </div>
+</div>
+
+<div id="inspectConfirmPop" class="answer-confirm-pop hidden" role="dialog" aria-modal="true" aria-label="Inspect card confirm">
+  <div class="answer-confirm-text">このカードを確認しますか。</div>
+  <div class="answer-confirm-actions">
+    <button id="btnInspectYes" class="btn primary">はい</button>
+    <button id="btnInspectNo" class="btn ghost">いいえ</button>
+  </div>
+</div>
+
+<div id="specialPhasePop" class="special-phase-pop hidden" aria-hidden="true">
+  <div class="special-phase-card" role="dialog" aria-modal="true" aria-label="準備フェース">
+    <div class="special-phase-title">準備フェース</div>
+    <div id="specialPhaseMessage" class="special-phase-message"></div>
+  </div>
+</div>
+
 <div id="centerIntro" class="center-intro">
   <div class="center-intro-inner">
     <div id="centerIntroPop" class="center-intro-pop">法医学者は「??」です。</div>
@@ -1626,6 +1723,9 @@ const state = {
   _lastWitnessPickKey: null,
   _revealTimer: null,
   _witnessOverlayTimer: null,
+  specialPhase: null,
+  specialPoliceChecks: {},
+  _specialPhaseFinalizing: false,
 };
 
 /* デッキ */
@@ -1734,6 +1834,15 @@ const btnAnswerNo  = document.getElementById('btnAnswerNo');
 const lawyerRevealPop = document.getElementById('lawyerRevealPop');
 const btnLawyerRevealYes = document.getElementById('btnLawyerRevealYes');
 const btnLawyerRevealNo  = document.getElementById('btnLawyerRevealNo');
+const insiderConfirmPop = document.getElementById('insiderConfirmPop');
+const insiderConfirmText = document.getElementById('insiderConfirmText');
+const btnInsiderYes = document.getElementById('btnInsiderYes');
+const btnInsiderNo = document.getElementById('btnInsiderNo');
+const inspectConfirmPop = document.getElementById('inspectConfirmPop');
+const btnInspectYes = document.getElementById('btnInspectYes');
+const btnInspectNo = document.getElementById('btnInspectNo');
+const specialPhasePop = document.getElementById('specialPhasePop');
+const specialPhaseMessage = document.getElementById('specialPhaseMessage');
 const answeringPop = document.getElementById('answeringPop');
 const answeringPopMessage = document.getElementById('answeringPopMessage');
 const answeringHostActions = document.getElementById('answeringHostActions');
@@ -1911,6 +2020,19 @@ function canTriggerLawyerReveal(playerId, roleName, isMe){
   if (isLawyerRevealActiveForPlayer(playerId)) return false;
   return true;
 }
+function isSpecialPhaseActive(){
+  return !!state.specialPhase;
+}
+function isSpecialPhaseDone(roleKey){
+  const done = state.specialPhase?.done || {};
+  return !!done?.[roleKey];
+}
+function isInsiderPhaseActive(){
+  return isSpecialPhaseActive() && getViewerRoleName() === '内通者' && !isSpecialPhaseDone('insider');
+}
+function isSpecialPolicePhaseActive(){
+  return isSpecialPhaseActive() && getViewerRoleName() === '検査技師' && !isSpecialPhaseDone('specialPolice');
+}
 
 function closeAnswerConfirmPop(){
   if (!_answerPopOpen) return;
@@ -1978,6 +2100,73 @@ function openLawyerRevealPopAt(clientX, clientY){
   });
 }
 
+let _insiderPopOpen = false;
+let _inspectPopOpen = false;
+let _pendingInsiderTarget = null;
+let _pendingInspectTarget = null;
+
+function closeInsiderConfirmPop(){
+  if (!_insiderPopOpen) return;
+  _insiderPopOpen = false;
+  _pendingInsiderTarget = null;
+  insiderConfirmPop.classList.add('hidden');
+}
+function openInsiderConfirmPopAt(clientX, clientY, target){
+  if (!target || !target.playerId) return;
+  const OFFSET = 8;
+  const x0 = clientX + OFFSET;
+  const y0 = clientY + OFFSET;
+
+  _pendingInsiderTarget = target;
+  insiderConfirmText.textContent = `（${target.playerName || '名無し'}）のバッジを破棄しますか。`;
+
+  insiderConfirmPop.classList.remove('hidden');
+  _insiderPopOpen = true;
+  insiderConfirmPop.style.left = `${x0}px`;
+  insiderConfirmPop.style.top  = `${y0}px`;
+
+  requestAnimationFrame(() => {
+    const pad = 8;
+    const r = insiderConfirmPop.getBoundingClientRect();
+    const maxL = window.innerWidth  - r.width  - pad;
+    const maxT = window.innerHeight - r.height - pad;
+    const left = Math.max(pad, Math.min(x0, maxL));
+    const top  = Math.max(pad, Math.min(y0, maxT));
+    insiderConfirmPop.style.left = `${left}px`;
+    insiderConfirmPop.style.top  = `${top}px`;
+  });
+}
+
+function closeInspectConfirmPop(){
+  if (!_inspectPopOpen) return;
+  _inspectPopOpen = false;
+  _pendingInspectTarget = null;
+  inspectConfirmPop.classList.add('hidden');
+}
+function openInspectConfirmPopAt(clientX, clientY, target){
+  if (!target) return;
+  const OFFSET = 8;
+  const x0 = clientX + OFFSET;
+  const y0 = clientY + OFFSET;
+
+  _pendingInspectTarget = target;
+  inspectConfirmPop.classList.remove('hidden');
+  _inspectPopOpen = true;
+  inspectConfirmPop.style.left = `${x0}px`;
+  inspectConfirmPop.style.top  = `${y0}px`;
+
+  requestAnimationFrame(() => {
+    const pad = 8;
+    const r = inspectConfirmPop.getBoundingClientRect();
+    const maxL = window.innerWidth  - r.width  - pad;
+    const maxT = window.innerHeight - r.height - pad;
+    const left = Math.max(pad, Math.min(x0, maxL));
+    const top  = Math.max(pad, Math.min(y0, maxT));
+    inspectConfirmPop.style.left = `${left}px`;
+    inspectConfirmPop.style.top  = `${top}px`;
+  });
+}
+
 /* ボタン動作 */
 btnAnswerNo.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -1997,6 +2186,26 @@ btnLawyerRevealYes.addEventListener('click', (e) => {
   e.stopPropagation();
   submitLawyerReveal().catch(()=>{});
   closeLawyerRevealPop();
+});
+
+btnInsiderNo.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeInsiderConfirmPop();
+});
+btnInsiderYes.addEventListener('click', (e) => {
+  e.stopPropagation();
+  submitInsiderDiscard().catch(()=>{});
+  closeInsiderConfirmPop();
+});
+
+btnInspectNo.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeInspectConfirmPop();
+});
+btnInspectYes.addEventListener('click', (e) => {
+  e.stopPropagation();
+  submitSpecialPoliceCheck().catch(()=>{});
+  closeInspectConfirmPop();
 });
 
 /* 外クリックで閉じる（captureで確実に拾う） */
@@ -2021,6 +2230,18 @@ document.addEventListener('pointerdown', (e) => {
 
   closeLawyerRevealPop();
 }, true);
+document.addEventListener('pointerdown', (e) => {
+  if (!_insiderPopOpen) return;
+  const t = e.target;
+  if (insiderConfirmPop.contains(t)) return;
+  closeInsiderConfirmPop();
+}, true);
+document.addEventListener('pointerdown', (e) => {
+  if (!_inspectPopOpen) return;
+  const t = e.target;
+  if (inspectConfirmPop.contains(t)) return;
+  closeInspectConfirmPop();
+}, true);
 
 /* Escでも閉じる */
 document.addEventListener('keydown', (e) => {
@@ -2028,6 +2249,12 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeLawyerRevealPop();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeInsiderConfirmPop();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeInspectConfirmPop();
 });
 
 function updateAnsweringPopup(){
@@ -2039,6 +2266,36 @@ function updateAnsweringPopup(){
   answeringPop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
   answeringPop.classList.toggle('host', state.isHost && shouldShow);
   answeringHostActions.hidden = !(state.isHost && shouldShow);
+}
+
+function getSpecialPhaseMessageText(){
+  if (!state.specialPhase) return '';
+  const lines = [];
+  const hasInsider = !!state.specialPhase?.roles?.insider;
+  const hasPolice = !!state.specialPhase?.roles?.specialPolice;
+  if (hasInsider){
+    lines.push('内通者は破棄したいバッジを選んでください。（内通者がいる時に表示）');
+  }
+  if (hasPolice){
+    lines.push('検査技師は確認したいタイルを選んでください。（検査技師がいる時に表示）');
+  }
+  return lines.join('\n');
+}
+
+function updateSpecialPhaseUI(){
+  const active = !!state.specialPhase;
+  specialPhasePop.classList.toggle('hidden', !active);
+  specialPhasePop.setAttribute('aria-hidden', active ? 'false' : 'true');
+  if (active){
+    specialPhaseMessage.textContent = getSpecialPhaseMessageText();
+  }
+
+  if (!active){
+    closeInsiderConfirmPop();
+    closeInspectConfirmPop();
+  }
+
+  renderPlayersVertical(latestPlayers);
 }
 
 function updateAnswerResolutionUI(){
@@ -2143,6 +2400,51 @@ async function submitLawyerReveal(){
     },
     [`answerUsed/${state.userId}`]: true
   }).catch(()=>{});
+}
+
+async function submitInsiderDiscard(){
+  if (!state.roomCode || !state.userId) return;
+  if (!isInsiderPhaseActive()) return;
+  if (!_pendingInsiderTarget || !_pendingInsiderTarget.playerId) return;
+  const targetId = _pendingInsiderTarget.playerId;
+  if (isAnswerUsed(targetId)) return;
+
+  const updates = {
+    [`answerUsed/${targetId}`]: true,
+    'specialPhase/done/insider': true,
+    'specialPhase/insiderTargetId': targetId,
+    'specialPhase/insiderTargetName': _pendingInsiderTarget.playerName || '名無し'
+  };
+  await update(ref(db, `rooms/${state.roomCode}`), updates).catch(()=>{});
+}
+
+async function submitSpecialPoliceCheck(){
+  if (!state.roomCode || !state.userId) return;
+  if (!isSpecialPolicePhaseActive()) return;
+  if (!_pendingInspectTarget) return;
+  const { ownerId, kind, idx } = _pendingInspectTarget;
+  if (!ownerId || !kind) return;
+
+  const key = getSpecialPoliceCardKey(ownerId, kind, idx);
+  if (state.specialPoliceChecks && state.specialPoliceChecks[key]) return;
+
+  const murdererId = findPlayerIdByRole('殺人犯');
+  const selection = getSelection('murderer', kind);
+  const isHit = !!(selection && murdererId && ownerId === murdererId && selection.idx === idx);
+
+  const updates = {
+    [`specialPoliceChecks/${key}`]: {
+      ownerId,
+      kind,
+      idx: Number(idx),
+      isHit,
+      by: state.userId,
+      at: Date.now()
+    },
+    'specialPhase/done/specialPolice': true,
+    'specialPhase/specialPoliceCardKey': key
+  };
+  await update(ref(db, `rooms/${state.roomCode}`), updates).catch(()=>{});
 }
 
 async function resolveAnswer(isCorrect){
@@ -2408,6 +2710,21 @@ function subscribeForensicDiscarded(){
     state.forensicDiscarded = snap.val() || {};
   });
 }
+function subscribeSpecialPhase(){
+  const pRef = ref(db, `rooms/${state.roomCode}/specialPhase`);
+  onValue(pRef, snap => {
+    state.specialPhase = snap.val() || null;
+    updateSpecialPhaseUI();
+    finalizeSpecialPhaseSwap().catch(()=>{});
+  });
+}
+function subscribeSpecialPoliceChecks(){
+  const cRef = ref(db, `rooms/${state.roomCode}/specialPoliceChecks`);
+  onValue(cRef, snap => {
+    state.specialPoliceChecks = snap.val() || {};
+    renderPlayersVertical(latestPlayers);
+  });
+}
 function subscribeSceneSelection(){
   const sRef = ref(db, `rooms/${state.roomCode}/sceneSelection`);
   onValue(sRef, snap => {
@@ -2489,6 +2806,9 @@ function handleRoomResetLocal(resetAt){
   state.witnessPick = null;
   state.forceSingleColumn = false;
   state._lastWitnessPickKey = null;
+  state.specialPhase = null;
+  state.specialPoliceChecks = {};
+  state._specialPhaseFinalizing = false;
   if (state._revealTimer){
     clearTimeout(state._revealTimer);
     state._revealTimer = null;
@@ -2505,6 +2825,7 @@ function handleRoomResetLocal(resetAt){
   witnessRevealOverlay.classList.remove('show');
   witnessRevealOverlay.setAttribute('aria-hidden', 'true');
 
+  updateSpecialPhaseUI();
   renderPlayersVertical(latestPlayers);
   updateChoosingPopup();
   updateAnsweringPopup();
@@ -2696,6 +3017,15 @@ function getAccompliceRoleName(){
 function hasWitnessRole(){
   return !!findPlayerIdByRole("目撃者");
 }
+function hasInsiderRole(){
+  return !!findPlayerIdByRole("内通者");
+}
+function hasSpecialPoliceRole(){
+  return !!findPlayerIdByRole("検査技師");
+}
+function shouldTriggerSpecialPhase(){
+  return hasInsiderRole() || hasSpecialPoliceRole();
+}
 function getAnswerStatus(){
   return state.answerResult?.status || null;
 }
@@ -2731,6 +3061,26 @@ function getSelection(roleKey, kind){
   const idx = Number(s.idx);
   if (!Number.isFinite(idx)) return null;
   return { idx, name: String(s.name || '') };
+}
+function getSpecialPoliceCardKey(ownerId, kind, idx){
+  return `${ownerId || ''}|${kind || ''}|${idx}`;
+}
+function getSpecialPoliceCheck(ownerId, kind, idx){
+  const key = getSpecialPoliceCardKey(ownerId, kind, idx);
+  return (state.specialPoliceChecks && state.specialPoliceChecks[key]) || null;
+}
+function canInsiderDiscardBadge(playerId){
+  if (!isInsiderPhaseActive()) return false;
+  if (!playerId) return false;
+  if (isAnswerUsed(playerId)) return false;
+  return true;
+}
+function canSpecialPoliceInspectCard(ownerId, kind, idx){
+  if (!isSpecialPolicePhaseActive()) return false;
+  if (!ownerId || !kind) return false;
+  if (ownerId === state.userId) return false;
+  if (getSpecialPoliceCheck(ownerId, kind, idx)) return false;
+  return true;
 }
 function isRoleSelectionLocked(roleKey){
   const w = getSelection(roleKey,'weapon');
@@ -3678,6 +4028,18 @@ async function doReplaceConfirmed(){
       else oldPicked = Number(v);
     }
   }
+  if (shouldTriggerSpecialPhase()){
+    await startSpecialPhaseSwap({
+      cardIdx,
+      poolSlot,
+      newPoolId: newId,
+      oldPoolId,
+      oldPicked,
+      nextStage
+    });
+    return;
+  }
+
   await set(ref(db, `rooms/${state.roomCode}/forensicDiscarded/${cardIdx}`), {
     poolId: Number(oldPoolId),
     pickedItemIdx: (oldPicked === null || !Number.isFinite(oldPicked)) ? null : Number(oldPicked),
@@ -3706,6 +4068,101 @@ async function doReplaceConfirmed(){
   await set(stageRef, nextStage);
 
   closeDiscardOverlays();
+}
+
+async function startSpecialPhaseSwap({ cardIdx, poolSlot, newPoolId, oldPoolId, oldPicked, nextStage }){
+  if (!state.roomCode) return;
+  if (state.specialPhase) return;
+
+  const hasInsider = hasInsiderRole();
+  const hasPolice = hasSpecialPoliceRole();
+  const now = Date.now();
+
+  const payload = {
+    cardIdx,
+    poolSlot,
+    newPoolId,
+    oldPoolId,
+    oldPickedItemIdx: (oldPicked === null || !Number.isFinite(oldPicked)) ? null : Number(oldPicked),
+    stage: nextStage,
+    startedAt: now,
+    roles: {
+      insider: !!hasInsider,
+      specialPolice: !!hasPolice
+    },
+    done: {
+      insider: !hasInsider,
+      specialPolice: !hasPolice
+    }
+  };
+
+  await set(ref(db, `rooms/${state.roomCode}/specialPhase`), payload).catch(()=>{});
+}
+
+function isSpecialPhaseComplete(){
+  if (!state.specialPhase) return false;
+  const hasInsider = !!state.specialPhase?.roles?.insider;
+  const hasPolice = !!state.specialPhase?.roles?.specialPolice;
+  const doneInsider = !!state.specialPhase?.done?.insider;
+  const donePolice = !!state.specialPhase?.done?.specialPolice;
+  if (hasInsider && !doneInsider) return false;
+  if (hasPolice && !donePolice) return false;
+  return true;
+}
+
+async function finalizeSpecialPhaseSwap(){
+  if (!state.roomCode || !state.specialPhase) return;
+  if (!isSpecialPhaseComplete()) return;
+  if (!state.isForensicViewer && !state.isHost) return;
+  if (state._specialPhaseFinalizing) return;
+
+  state._specialPhaseFinalizing = true;
+  try{
+    const {
+      cardIdx,
+      poolSlot,
+      newPoolId,
+      oldPoolId,
+      oldPickedItemIdx,
+      stage
+    } = state.specialPhase;
+
+    await ensureForensicCluesInDB().catch(()=>{});
+    const cRef = ref(db, `rooms/${state.roomCode}/forensicClues`);
+    const snap = await get(cRef);
+    const data = snap.val() || {};
+    const poolIds = Array.isArray(data.poolIds) ? data.poolIds.slice() : calcInitialPoolIds();
+    if (Number.isFinite(poolSlot) && Number.isFinite(newPoolId)){
+      poolIds[poolSlot] = Number(newPoolId);
+    }
+
+    const updates = {
+      [`forensicDiscarded/${cardIdx}`]: {
+        poolId: Number(oldPoolId),
+        pickedItemIdx: (oldPickedItemIdx === null || !Number.isFinite(oldPickedItemIdx)) ? null : Number(oldPickedItemIdx),
+        discardedAt: Date.now(),
+        stage: Number(stage) || 1
+      },
+      [`forensicPick/${cardIdx}`]: null,
+      forensicSwapAnim: {
+        cardIdx: Number(cardIdx),
+        poolSlot: Number(poolSlot),
+        newPoolId: Number(newPoolId),
+        startedAt: Date.now()
+      },
+      forensicClues: {
+        poolIds,
+        updatedAt: Date.now()
+      },
+      discussionStage: Number(stage) || 1,
+      specialPhase: null,
+      forensicReplacePreview: null
+    };
+
+    await update(ref(db, `rooms/${state.roomCode}`), updates).catch(()=>{});
+  } finally {
+    state._specialPhaseFinalizing = false;
+  }
 }
 
 /* swap animation */
@@ -3821,6 +4278,9 @@ function applyReplacePreviewToDOM(forceImmediate=false){
   const prev = state.forensicReplacePreview;
   const idx = prev ? Number(prev.cardIdx) : NaN;
   if (!Number.isFinite(idx)) return;
+  if (shouldTriggerSpecialPhase() && !state.isForensicViewer){
+    return;
+  }
 
   const cardEl = findClueCardElement(idx);
   if (cardEl) cardEl.classList.add('preview-lift');
@@ -4099,12 +4559,23 @@ function makeRoleWrap(playerId, playerName, isMe, showFace, roleName, roleNamesT
 
   const chip = document.createElement('img');
   const chipUsed = isAnswerUsed(playerId);
-  chip.className = 'answer-chip' + (isMe && !chipUsed ? ' clickable' : '') + (chipUsed ? ' used' : '');
+  const canInsiderPick = canInsiderDiscardBadge(playerId);
+  chip.className = 'answer-chip' + (isMe && !chipUsed ? ' clickable' : '') + (chipUsed ? ' used' : '') + (canInsiderPick ? ' insider-target' : '');
   chip.src = 'answerchip.png';
   chip.alt = 'answerchip';
   chip.loading = 'eager';
 
-  if (isMe){
+  if (canInsiderPick){
+    chip.style.pointerEvents = 'auto';
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!canInsiderDiscardBadge(playerId)) return;
+      openInsiderConfirmPopAt(e.clientX, e.clientY, {
+        playerId,
+        playerName
+      });
+    });
+  } else if (isMe){
     chip.style.pointerEvents = 'auto';
     chip.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -4302,6 +4773,28 @@ function applySelectionClassesToCard(cardEl, {viewerPrivileged, ownerId, kind, i
   }
 }
 
+function applySpecialPoliceCardState(cardEl, {ownerId, kind, idxInRow}){
+  if (getViewerRoleName() !== '検査技師') return;
+  const check = getSpecialPoliceCheck(ownerId, kind, idxInRow);
+  if (check){
+    const mark = document.createElement('div');
+    mark.className = `special-police-mark ${check.isHit ? 'hit' : 'miss'}`;
+    cardEl.appendChild(mark);
+  }
+  if (canSpecialPoliceInspectCard(ownerId, kind, idxInRow)){
+    cardEl.classList.add('special-police-target');
+    cardEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!canSpecialPoliceInspectCard(ownerId, kind, idxInRow)) return;
+      openInspectConfirmPopAt(e.clientX, e.clientY, {
+        ownerId,
+        kind,
+        idx: idxInRow
+      });
+    });
+  }
+}
+
 /* render main */
 function renderPlayersVertical(players){
   if (state._swapAnimating && Date.now() < state._swapAnimEndAt){
@@ -4426,11 +4919,22 @@ function buildPlayerBlock(p, isForensic){
     const chip = document.createElement('img');
     const chipUsed = isAnswerUsed(p.id);
     const isClickable = isMe && !chipUsed;
-    chip.className = 'answer-chip' + (isClickable ? ' clickable' : '') + (chipUsed ? ' used' : '');
+    const canInsiderPick = canInsiderDiscardBadge(p.id);
+    chip.className = 'answer-chip' + (isClickable ? ' clickable' : '') + (chipUsed ? ' used' : '') + (canInsiderPick ? ' insider-target' : '');
     chip.src = 'answerchip.png';
     chip.alt = 'answerchip';
     chip.loading = 'eager';
-    if (isMe){
+    if (canInsiderPick){
+      chip.style.pointerEvents = 'auto';
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!canInsiderDiscardBadge(p.id)) return;
+        openInsiderConfirmPopAt(e.clientX, e.clientY, {
+          playerId: p.id,
+          playerName: p.name || '名無し'
+        });
+      });
+    } else if (isMe){
       chip.style.pointerEvents = 'auto';
       chip.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -4487,8 +4991,12 @@ function buildPlayerBlock(p, isForensic){
 
     weapons.forEach((name, idx) => {
       const card = makeCardEl('weapon', name);
+      card.dataset.ownerId = p.id;
+      card.dataset.kind = 'weapon';
+      card.dataset.idx = String(idx);
 
       applySelectionClassesToCard(card, { viewerPrivileged: viewerPriv, ownerId: p.id, kind:'weapon', idxInRow: idx });
+      applySpecialPoliceCardState(card, { ownerId: p.id, kind: 'weapon', idxInRow: idx });
 
       const canClick = isMe && (roleKeySelf === 'murderer' || roleKeySelf === 'cunning') && !isRoleSelectionLocked(roleKeySelf);
       if (canClick){
@@ -4505,8 +5013,12 @@ function buildPlayerBlock(p, isForensic){
 
     evids.forEach((name, idx) => {
       const card = makeCardEl('evidence', name);
+      card.dataset.ownerId = p.id;
+      card.dataset.kind = 'evidence';
+      card.dataset.idx = String(idx);
 
       applySelectionClassesToCard(card, { viewerPrivileged: viewerPriv, ownerId: p.id, kind:'evidence', idxInRow: idx });
+      applySpecialPoliceCardState(card, { ownerId: p.id, kind: 'evidence', idxInRow: idx });
 
       const canClick = isMe && (roleKeySelf === 'murderer' || roleKeySelf === 'cunning') && !isRoleSelectionLocked(roleKeySelf);
       if (canClick){
@@ -4606,6 +5118,8 @@ async function joinRoom(){
   subscribeDiscussionStage();
   subscribeForensicReplacePreview();
   subscribeForensicDiscarded();
+  subscribeSpecialPhase();
+  subscribeSpecialPoliceChecks();
   subscribeRoleOptions();
   subscribeSelections();
   subscribePhase();
@@ -4691,6 +5205,8 @@ btnResetRoom.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${code}/answerResult`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/lawyerReveal`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/witnessPick`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/specialPhase`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/specialPoliceChecks`)).catch(()=>{});
   await set(ref(db, `rooms/${code}/discussionStage`), 1).catch(()=>{});
 
   // kick everyone seats
@@ -4799,6 +5315,8 @@ btnGameStart.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${state.roomCode}/answerResult`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/lawyerReveal`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/witnessPick`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/specialPhase`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/specialPoliceChecks`)).catch(()=>{});
   await set(ref(db, `rooms/${state.roomCode}/discussionStage`), 1).catch(()=>{});
 });
 
