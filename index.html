@@ -387,6 +387,32 @@
     justify-content:flex-end;
     gap:8px;
   }
+  .lawyer-reveal-pop{
+    position:fixed;
+    left:0;
+    top:0;
+    background:#fff;
+    border:1px solid rgba(0,0,0,.16);
+    border-radius:12px;
+    box-shadow:0 18px 40px rgba(0,0,0,.22);
+    padding:10px 12px;
+    z-index:1000;
+    min-width: 230px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .lawyer-reveal-pop.hidden{ display:none; }
+  .lawyer-reveal-text{
+    font-size:13px;
+    font-weight:700;
+    line-height:1.4;
+  }
+  .lawyer-reveal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
 
   /* 自分のチップだけクリックできる見た目に */
   .answer-chip.clickable{
@@ -397,6 +423,9 @@
   }
   .answer-chip.clickable.used{
     cursor:default;
+  }
+  .lawyer-reveal-trigger{
+    cursor:pointer;
   }
 
   #roomInfoLobby, #lobby h2, #lobby p {display:none;}
@@ -458,15 +487,15 @@
   }
   body.two-col .player-badge.me{ background:#111; color:#fff; border-color:#111; }
   .answer-chip{
-    width: calc(14px * var(--uiScale));
-    height: calc(14px * var(--uiScale));
+    width: calc(21px * var(--uiScale));
+    height: calc(21px * var(--uiScale));
     display:block;
     object-fit:contain;
     flex:0 0 auto;
   }
   body.two-col .answer-chip{
-    width: 14px;
-    height: 14px;
+    width: 21px;
+    height: 21px;
   }
   .identity-name-tag{
   font-size: 11px;
@@ -1408,6 +1437,13 @@
     <button id="btnAnswerNo" class="btn ghost">No</button>
   </div>
 </div>
+<div id="lawyerRevealPop" class="lawyer-reveal-pop hidden" role="dialog" aria-modal="true" aria-label="Lawyer reveal confirm">
+  <div class="lawyer-reveal-text">バッジを破棄して正体を公開しますか。</div>
+  <div class="lawyer-reveal-actions">
+    <button id="btnLawyerRevealYes" class="btn primary">はい</button>
+    <button id="btnLawyerRevealNo" class="btn ghost">いいえ</button>
+  </div>
+</div>
 
 <div id="centerIntro" class="center-intro">
   <div class="center-intro-inner">
@@ -1584,6 +1620,7 @@ const state = {
   answerUsed: {},
   answering: null,
   answerResult: null,
+  lawyerReveal: null,
   witnessPick: null,
   forceSingleColumn: false,
   _lastWitnessPickKey: null,
@@ -1694,6 +1731,9 @@ const discussionPop = document.getElementById('discussionPop');
 const answerConfirmPop = document.getElementById('answerConfirmPop');
 const btnAnswerYes = document.getElementById('btnAnswerYes');
 const btnAnswerNo  = document.getElementById('btnAnswerNo');
+const lawyerRevealPop = document.getElementById('lawyerRevealPop');
+const btnLawyerRevealYes = document.getElementById('btnLawyerRevealYes');
+const btnLawyerRevealNo  = document.getElementById('btnLawyerRevealNo');
 const answeringPop = document.getElementById('answeringPop');
 const answeringPopMessage = document.getElementById('answeringPopMessage');
 const answeringHostActions = document.getElementById('answeringHostActions');
@@ -1852,10 +1892,24 @@ function refreshRoomLabels(){
    ★Answer Chip confirm pop
    ========================= */
 let _answerPopOpen = false;
+let _lawyerPopOpen = false;
 
 function isAnswerUsed(playerId){
   if (!playerId) return false;
   return !!(state.answerUsed && state.answerUsed[playerId]);
+}
+function isLawyerRevealActiveForPlayer(playerId){
+  if (!playerId) return false;
+  return !!(state.lawyerReveal && state.lawyerReveal.playerId === playerId);
+}
+function canTriggerLawyerReveal(playerId, roleName, isMe){
+  if (!isMe || !playerId) return false;
+  if (roleName !== '顧問探偵') return false;
+  if (!state.roomCode) return false;
+  if (!state._lastDealStamp) return false;
+  if (isAnswerUsed(playerId) || state.answering) return false;
+  if (isLawyerRevealActiveForPlayer(playerId)) return false;
+  return true;
 }
 
 function closeAnswerConfirmPop(){
@@ -1892,6 +1946,38 @@ function openAnswerConfirmPopAt(clientX, clientY){
   });
 }
 
+function closeLawyerRevealPop(){
+  if (!_lawyerPopOpen) return;
+  _lawyerPopOpen = false;
+  lawyerRevealPop.classList.add('hidden');
+}
+
+function openLawyerRevealPopAt(clientX, clientY){
+  const OFFSET = 8;
+  const x0 = clientX + OFFSET;
+  const y0 = clientY + OFFSET;
+
+  lawyerRevealPop.classList.remove('hidden');
+  _lawyerPopOpen = true;
+
+  lawyerRevealPop.style.left = `${x0}px`;
+  lawyerRevealPop.style.top  = `${y0}px`;
+
+  requestAnimationFrame(() => {
+    const pad = 8;
+    const r = lawyerRevealPop.getBoundingClientRect();
+
+    const maxL = window.innerWidth  - r.width  - pad;
+    const maxT = window.innerHeight - r.height - pad;
+
+    const left = Math.max(pad, Math.min(x0, maxL));
+    const top  = Math.max(pad, Math.min(y0, maxT));
+
+    lawyerRevealPop.style.left = `${left}px`;
+    lawyerRevealPop.style.top  = `${top}px`;
+  });
+}
+
 /* ボタン動作 */
 btnAnswerNo.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -1901,6 +1987,16 @@ btnAnswerYes.addEventListener('click', (e) => {
   e.stopPropagation();
   submitAnswerRequest().catch(()=>{});
   closeAnswerConfirmPop();
+});
+
+btnLawyerRevealNo.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeLawyerRevealPop();
+});
+btnLawyerRevealYes.addEventListener('click', (e) => {
+  e.stopPropagation();
+  submitLawyerReveal().catch(()=>{});
+  closeLawyerRevealPop();
 });
 
 /* 外クリックで閉じる（captureで確実に拾う） */
@@ -1916,10 +2012,22 @@ document.addEventListener('pointerdown', (e) => {
 
   closeAnswerConfirmPop();
 }, true);
+document.addEventListener('pointerdown', (e) => {
+  if (!_lawyerPopOpen) return;
+
+  const t = e.target;
+  if (lawyerRevealPop.contains(t)) return;
+  if (t && t.closest && t.closest('.lawyer-reveal-trigger')) return;
+
+  closeLawyerRevealPop();
+}, true);
 
 /* Escでも閉じる */
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeAnswerConfirmPop();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLawyerRevealPop();
 });
 
 function updateAnsweringPopup(){
@@ -2018,6 +2126,23 @@ async function submitAnswerRequest(){
     }
   };
   await update(roomRef, payload);
+}
+
+async function submitLawyerReveal(){
+  if (!state.roomCode || !state.userId) return;
+  if (getViewerRoleName() !== '顧問探偵') return;
+  if (isAnswerUsed(state.userId)) return;
+  if (state.answering) return;
+  if (isLawyerRevealActiveForPlayer(state.userId)) return;
+
+  const roomRef = ref(db, `rooms/${state.roomCode}`);
+  await update(roomRef, {
+    lawyerReveal: {
+      playerId: state.userId,
+      at: Date.now()
+    },
+    [`answerUsed/${state.userId}`]: true
+  }).catch(()=>{});
 }
 
 async function resolveAnswer(isCorrect){
@@ -2314,6 +2439,13 @@ function subscribeAnswerResult(){
     updateAnswerResolutionUI();
   });
 }
+function subscribeLawyerReveal(){
+  const lRef = ref(db, `rooms/${state.roomCode}/lawyerReveal`);
+  onValue(lRef, snap => {
+    state.lawyerReveal = snap.val() || null;
+    renderPlayersVertical(latestPlayers);
+  });
+}
 function subscribeWitnessPick(){
   const wRef = ref(db, `rooms/${state.roomCode}/witnessPick`);
   onValue(wRef, snap => {
@@ -2353,6 +2485,7 @@ function handleRoomResetLocal(resetAt){
   state.answerUsed = {};
   state.answering = null;
   state.answerResult = null;
+  state.lawyerReveal = null;
   state.witnessPick = null;
   state.forceSingleColumn = false;
   state._lastWitnessPickKey = null;
@@ -3947,6 +4080,7 @@ function makeRoleCardFace(roleName){
 function makeRoleWrap(playerId, playerName, isMe, showFace, roleName, roleNamesToShow = null){
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
+  const canLawyerReveal = canTriggerLawyerReveal(playerId, roleName, isMe);
 
   const tagRow = document.createElement('div');
   tagRow.className = 'role-tag-row';
@@ -3954,6 +4088,13 @@ function makeRoleWrap(playerId, playerName, isMe, showFace, roleName, roleNamesT
   const nameTag = document.createElement('div');
   nameTag.className = 'role-name-tag' + (isMe ? ' me' : '');
   nameTag.textContent = playerName || '名無し';
+  if (canLawyerReveal){
+    nameTag.classList.add('lawyer-reveal-trigger');
+    nameTag.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openLawyerRevealPopAt(e.clientX, e.clientY);
+    });
+  }
   tagRow.appendChild(nameTag);
 
   const chip = document.createElement('img');
@@ -3987,11 +4128,26 @@ function makeRoleWrap(playerId, playerName, isMe, showFace, roleName, roleNamesT
       });
       wrap.appendChild(stack);
     } else {
-      wrap.appendChild(makeRoleCardFace(names[0]));
+      const roleCard = makeRoleCardFace(names[0]);
+      if (canLawyerReveal){
+        roleCard.classList.add('lawyer-reveal-trigger');
+        roleCard.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openLawyerRevealPopAt(e.clientX, e.clientY);
+        });
+      }
+      wrap.appendChild(roleCard);
     }
   } else {
     const role = document.createElement('div');
     role.className = 'role-slot back';
+    if (canLawyerReveal){
+      role.classList.add('lawyer-reveal-trigger');
+      role.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openLawyerRevealPopAt(e.clientX, e.clientY);
+      });
+    }
     wrap.appendChild(role);
   }
   return wrap;
@@ -4211,6 +4367,7 @@ function buildPlayerBlock(p, isForensic){
   const started = !!state._lastDealStamp;
   const myDeal = state.deal?.[p.id] || null;
   const roleName = myDeal?.role || '';
+  const canLawyerReveal = canTriggerLawyerReveal(p.id, roleName, isMe);
 
   let showFace = false;
   let revealRoleNames = null;
@@ -4240,6 +4397,10 @@ function buildPlayerBlock(p, isForensic){
       showFace = true;
       revealRoleNames = ['目撃者'];
     }
+    if (roleName === '顧問探偵' && isLawyerRevealActiveForPlayer(p.id)){
+      showFace = true;
+      revealRoleNames = null;
+    }
     if (revealAll){
       showFace = true;
       revealRoleNames = null;
@@ -4252,6 +4413,13 @@ function buildPlayerBlock(p, isForensic){
   const badge = document.createElement('div');
   badge.className = 'player-badge' + (isMe ? ' me' : '');
   badge.textContent = p.name || '名無し';
+  if (canLawyerReveal){
+    badge.classList.add('lawyer-reveal-trigger');
+    badge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openLawyerRevealPopAt(e.clientX, e.clientY);
+    });
+  }
   badgeGroup.appendChild(badge);
 
   if (!isForensic){
@@ -4445,6 +4613,7 @@ async function joinRoom(){
   subscribeAnswering();
   subscribeAnswerUsed();
   subscribeAnswerResult();
+  subscribeLawyerReveal();
   subscribeWitnessPick();
 
   // seat UI
@@ -4520,6 +4689,7 @@ btnResetRoom.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${code}/answerUsed`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/answering`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/answerResult`)).catch(()=>{});
+  await remove(ref(db, `rooms/${code}/lawyerReveal`)).catch(()=>{});
   await remove(ref(db, `rooms/${code}/witnessPick`)).catch(()=>{});
   await set(ref(db, `rooms/${code}/discussionStage`), 1).catch(()=>{});
 
@@ -4627,6 +4797,7 @@ btnGameStart.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${state.roomCode}/answerUsed`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/answering`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/answerResult`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/lawyerReveal`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/witnessPick`)).catch(()=>{});
   await set(ref(db, `rooms/${state.roomCode}/discussionStage`), 1).catch(()=>{});
 });
