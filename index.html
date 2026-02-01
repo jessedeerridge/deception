@@ -359,10 +359,18 @@
 
   body.two-col .role-wrap{ display:none; }
 
-  .player-badge{
+  .player-badge-group{
     position:absolute;
     top: calc(6px * var(--uiScale));
     left: calc(6px * var(--uiScale));
+    display:none;
+    align-items:center;
+    gap: calc(4px * var(--uiScale));
+    max-width: 78%;
+    z-index: 10;
+  }
+  body.two-col .player-badge-group{ display:flex; }
+  .player-badge{
     padding: calc(3px * var(--uiScale)) calc(7px * var(--uiScale));
     border-radius: 999px;
     font-weight: 900;
@@ -373,22 +381,13 @@
     color:#111;
     border:1px solid rgba(255,255,255,.25);
     box-shadow:0 6px 14px rgba(0,0,0,.22);
-    display:none;
-    max-width: 70%;
+    max-width: 100%;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    z-index: 10;
-    align-items:center;
-    gap: calc(4px * var(--uiScale));
   }
-  body.two-col .player-badge{ display:flex; }
   body.two-col .player-badge.me{ background:#111; color:#fff; border-color:#111; }
-  .player-badge .player-name{
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-  .player-badge .answer-chip{
+  .answer-chip{
     width: calc(14px * var(--uiScale));
     height: calc(14px * var(--uiScale));
     display:block;
@@ -426,6 +425,11 @@
     flex:0 0 auto;
     align-items:flex-start;
   }
+  .role-tag-row{
+    display:flex;
+    align-items:center;
+    gap: calc(4px * var(--uiScale));
+  }
   .role-name-tag{
     font-size: calc(10px * var(--uiScale));
     font-weight:900;
@@ -436,23 +440,10 @@
     background:#f3f4f6;
     border:1px solid #e5e7eb;
     color:#111;
-    display:inline-flex;
-    align-items:center;
-    gap: calc(4px * var(--uiScale));
     max-width:100%;
     box-sizing:border-box;
   }
   .role-name-tag.me{ background:#111;color:#fff;border-color:#111; }
-  .role-name-tag .role-name-text{
-    white-space:nowrap;
-  }
-  .role-name-tag .answer-chip{
-    width: calc(14px * var(--uiScale));
-    height: calc(14px * var(--uiScale));
-    display:block;
-    object-fit:contain;
-    flex:0 0 auto;
-  }
 
   .role-slot{
     width: calc(60px * var(--uiScale));
@@ -608,7 +599,7 @@
     padding-top: 26px;
     overflow:visible;
   }
-  .forensic-container .player-badge{ display:block !important; }
+  .forensic-container .player-badge-group{ display:flex !important; }
   .forensic-container .role-wrap{ display:none !important; }
   .forensic-container .row4{ overflow:hidden !important; }
 
@@ -3267,20 +3258,21 @@ function makeRoleWrap(playerName, isMe, showFace, roleName, roleNamesToShow = nu
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
 
+  const tagRow = document.createElement('div');
+  tagRow.className = 'role-tag-row';
+
   const nameTag = document.createElement('div');
   nameTag.className = 'role-name-tag' + (isMe ? ' me' : '');
-  const nameText = document.createElement('span');
-  nameText.className = 'role-name-text';
-  nameText.textContent = playerName || '名無し';
-  nameTag.appendChild(nameText);
+  nameTag.textContent = playerName || '名無し';
+  tagRow.appendChild(nameTag);
 
   const chip = document.createElement('img');
   chip.className = 'answer-chip';
   chip.src = 'answerchip.png';
   chip.alt = 'answerchip';
   chip.loading = 'eager';
-  nameTag.appendChild(chip);
-  wrap.appendChild(nameTag);
+  tagRow.appendChild(chip);
+  wrap.appendChild(tagRow);
 
   if (showFace && roleName){
     const names = Array.isArray(roleNamesToShow) && roleNamesToShow.length
@@ -3545,13 +3537,13 @@ function buildPlayerBlock(p, isForensic){
     }
   }
 
+  const badgeGroup = document.createElement('div');
+  badgeGroup.className = 'player-badge-group';
+
   const badge = document.createElement('div');
   badge.className = 'player-badge' + (isMe ? ' me' : '');
-
-  const badgeName = document.createElement('span');
-  badgeName.className = 'player-name';
-  badgeName.textContent = p.name || '名無し';
-  badge.appendChild(badgeName);
+  badge.textContent = p.name || '名無し';
+  badgeGroup.appendChild(badge);
 
   if (!isForensic){
     const chip = document.createElement('img');
@@ -3559,7 +3551,7 @@ function buildPlayerBlock(p, isForensic){
     chip.src = 'answerchip.png';
     chip.alt = 'answerchip';
     chip.loading = 'eager';
-    badge.appendChild(chip);
+    badgeGroup.appendChild(chip);
   }
 
   if (!isForensic && started && showFace && document.body.classList.contains('two-col')){
@@ -3568,11 +3560,11 @@ function buildPlayerBlock(p, isForensic){
       const tag = document.createElement('span');
       tag.className = 'identity-name-tag';
       tag.textContent = identityText;
-      badge.appendChild(tag);
+      badgeGroup.appendChild(tag);
     }
   }
 
-  block.appendChild(badge);
+  block.appendChild(badgeGroup);
 
   if (!isForensic){
     area.appendChild(makeRoleWrap(p.name, isMe, showFace, roleName, revealRoleNames));
