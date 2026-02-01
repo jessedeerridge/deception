@@ -359,10 +359,18 @@
 
   body.two-col .role-wrap{ display:none; }
 
-  .player-badge{
+  .player-badge-group{
     position:absolute;
     top: calc(6px * var(--uiScale));
     left: calc(6px * var(--uiScale));
+    display:none;
+    align-items:center;
+    gap: calc(4px * var(--uiScale));
+    max-width: 78%;
+    z-index: 10;
+  }
+  body.two-col .player-badge-group{ display:flex; }
+  .player-badge{
     padding: calc(3px * var(--uiScale)) calc(7px * var(--uiScale));
     border-radius: 999px;
     font-weight: 900;
@@ -373,15 +381,34 @@
     color:#111;
     border:1px solid rgba(255,255,255,.25);
     box-shadow:0 6px 14px rgba(0,0,0,.22);
-    display:none;
-    max-width: 70%;
+    max-width: 100%;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
-    z-index: 10;
   }
-  body.two-col .player-badge{ display:block; }
   body.two-col .player-badge.me{ background:#111; color:#fff; border-color:#111; }
+  .answer-chip{
+    width: calc(14px * var(--uiScale));
+    height: calc(14px * var(--uiScale));
+    display:block;
+    object-fit:contain;
+    flex:0 0 auto;
+  }
+  .identity-name-tag{
+    font-size: calc(10px * var(--uiScale));
+    font-weight:900;
+    line-height:1.1;
+    letter-spacing:.02em;
+    padding: calc(2px * var(--uiScale)) calc(6px * var(--uiScale));
+    border-radius:999px;
+    background:#f3f4f6;
+    border:1px solid #e5e7eb;
+    color:#111;
+    display:inline-flex;
+    align-items:center;
+    white-space:nowrap;
+    flex:0 0 auto;
+  }
 
   .deal-area{
     display:flex;
@@ -398,6 +425,11 @@
     flex:0 0 auto;
     align-items:flex-start;
   }
+  .role-tag-row{
+    display:flex;
+    align-items:center;
+    gap: calc(4px * var(--uiScale));
+  }
   .role-name-tag{
     font-size: calc(10px * var(--uiScale));
     font-weight:900;
@@ -408,6 +440,8 @@
     background:#f3f4f6;
     border:1px solid #e5e7eb;
     color:#111;
+    max-width:100%;
+    box-sizing:border-box;
   }
   .role-name-tag.me{ background:#111;color:#fff;border-color:#111; }
 
@@ -415,7 +449,7 @@
     width: calc(60px * var(--uiScale));
     height: calc(90px * var(--uiScale));
     border-radius: calc(10px * var(--uiScale));
-    border: calc(2px * var(--uiScale)) solid #2f2a6d;
+    border: calc(3px * var(--uiScale)) solid #2f2a6d;
     background:#fff;
     box-shadow:0 6px 16px rgba(0,0,0,.15);
     position:relative;
@@ -565,7 +599,7 @@
     padding-top: 26px;
     overflow:visible;
   }
-  .forensic-container .player-badge{ display:block !important; }
+  .forensic-container .player-badge-group{ display:flex !important; }
   .forensic-container .role-wrap{ display:none !important; }
   .forensic-container .row4{ overflow:hidden !important; }
 
@@ -2089,10 +2123,17 @@ function arrangePlayersForView(players){
   }
 
   const partnerObj = partner ? (remaining.find(p => p.id === partner) || null) : null;
-  const above = partnerObj ? remaining.filter(p => p.id !== partnerObj.id) : remaining.slice();
+  const rest = partnerObj ? remaining.filter(p => p.id !== partnerObj.id) : remaining.slice();
 
-  const ordered = above.concat([anchor]);
-  if (partnerObj) ordered.push(partnerObj);
+  let ordered = [];
+  if (isForensicView){
+    ordered = rest.concat([anchor]);
+    if (partnerObj) ordered.push(partnerObj);
+  } else {
+    ordered = [anchor];
+    if (partnerObj) ordered.push(partnerObj);
+    ordered.push(...rest);
+  }
   ordered.push(forensic);
 
   return ordered;
@@ -3217,10 +3258,21 @@ function makeRoleWrap(playerName, isMe, showFace, roleName, roleNamesToShow = nu
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
 
+  const tagRow = document.createElement('div');
+  tagRow.className = 'role-tag-row';
+
   const nameTag = document.createElement('div');
   nameTag.className = 'role-name-tag' + (isMe ? ' me' : '');
   nameTag.textContent = playerName || '名無し';
-  wrap.appendChild(nameTag);
+  tagRow.appendChild(nameTag);
+
+  const chip = document.createElement('img');
+  chip.className = 'answer-chip';
+  chip.src = 'answerchip.png';
+  chip.alt = 'answerchip';
+  chip.loading = 'eager';
+  tagRow.appendChild(chip);
+  wrap.appendChild(tagRow);
 
   if (showFace && roleName){
     const names = Array.isArray(roleNamesToShow) && roleNamesToShow.length
@@ -3242,6 +3294,14 @@ function makeRoleWrap(playerName, isMe, showFace, roleName, roleNamesToShow = nu
     wrap.appendChild(role);
   }
   return wrap;
+}
+
+function getIdentityTagText(roleName, revealRoleNames){
+  const names = Array.isArray(revealRoleNames) && revealRoleNames.length
+    ? revealRoleNames
+    : (roleName ? [roleName] : []);
+  if (!names.length) return '';
+  return names.join(' / ');
 }
 function makeClueCardEl(cardIdx, title, items){
   const d = document.createElement('div');
@@ -3441,11 +3501,6 @@ function buildPlayerBlock(p, isForensic){
 
   const isMe = (p.id === state.userId);
 
-  const badge = document.createElement('div');
-  badge.className = 'player-badge' + (isMe ? ' me' : '');
-  badge.textContent = p.name || '名無し';
-  block.appendChild(badge);
-
   const area = document.createElement('div');
   area.className = 'deal-area';
 
@@ -3459,22 +3514,57 @@ function buildPlayerBlock(p, isForensic){
     showFace = isMe;
     if (state.isForensicViewer) showFace = true; // 法医学者視点は全員の役職を表に
 
-    if (!document.body.classList.contains('two-col')){
-      const viewerRole = getViewerRoleName();
-      const accompliceRole = getAccompliceRoleName();
-      const isMurderer = (roleName === '殺人犯');
-      const isAccomplice = accompliceRole && (roleName === accompliceRole);
+    const viewerRole = getViewerRoleName();
+    const accompliceRole = getAccompliceRoleName();
+    const isMurderer = (roleName === '殺人犯');
+    const isAccomplice = accompliceRole && (roleName === accompliceRole);
 
-      if (viewerRole === '目撃者' && (isMurderer || isAccomplice)){
-        showFace = true;
-        revealRoleNames = accompliceRole ? ['殺人犯', accompliceRole] : ['殺人犯'];
-      }
-      if (viewerRole === 'ボディガード' && roleName === '目撃者'){
-        showFace = true;
-        revealRoleNames = ['目撃者'];
-      }
+    if (viewerRole === '殺人犯' && isAccomplice){
+      showFace = true;
+      revealRoleNames = accompliceRole ? [accompliceRole] : null;
+    }
+    if (viewerRole === accompliceRole && isMurderer){
+      showFace = true;
+      revealRoleNames = ['殺人犯'];
+    }
+    if (viewerRole === '目撃者' && (isMurderer || isAccomplice)){
+      showFace = true;
+      revealRoleNames = accompliceRole ? ['殺人犯', accompliceRole] : ['殺人犯'];
+    }
+    if (viewerRole === 'ボディガード' && roleName === '目撃者'){
+      showFace = true;
+      revealRoleNames = ['目撃者'];
     }
   }
+
+  const badgeGroup = document.createElement('div');
+  badgeGroup.className = 'player-badge-group';
+
+  const badge = document.createElement('div');
+  badge.className = 'player-badge' + (isMe ? ' me' : '');
+  badge.textContent = p.name || '名無し';
+  badgeGroup.appendChild(badge);
+
+  if (!isForensic){
+    const chip = document.createElement('img');
+    chip.className = 'answer-chip';
+    chip.src = 'answerchip.png';
+    chip.alt = 'answerchip';
+    chip.loading = 'eager';
+    badgeGroup.appendChild(chip);
+  }
+
+  if (!isForensic && started && showFace && document.body.classList.contains('two-col')){
+    const identityText = getIdentityTagText(roleName, revealRoleNames);
+    if (identityText){
+      const tag = document.createElement('span');
+      tag.className = 'identity-name-tag';
+      tag.textContent = identityText;
+      badgeGroup.appendChild(tag);
+    }
+  }
+
+  block.appendChild(badgeGroup);
 
   if (!isForensic){
     area.appendChild(makeRoleWrap(p.name, isMe, showFace, roleName, revealRoleNames));
