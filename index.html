@@ -1733,8 +1733,10 @@ function updateAnsweringPopup(){
   answeringPopMessage.textContent = `（${name}）が回答中...`;
   answeringPop.classList.toggle('show', shouldShow);
   answeringPop.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
-  answeringPop.classList.toggle('host', state.isHost && shouldShow);
-  answeringHostActions.classList.toggle('hidden', !(state.isHost && shouldShow));
+  const hostVisible = state.isHost && shouldShow;
+  answeringPop.classList.toggle('host', hostVisible);
+  answeringHostActions.classList.toggle('hidden', !hostVisible);
+  answeringHostActions.setAttribute('aria-hidden', hostVisible ? 'false' : 'true');
 }
 
 async function submitAnswerRequest(){
