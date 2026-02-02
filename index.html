@@ -1,5 +1,5 @@
 
-<!DOCTYPE html> 
+<!DOCTYPE html>   
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
@@ -419,7 +419,7 @@
     left:50%;
     transform:translateX(-50%);
     /* ★準備フェースを下へ（法医学者テーブル付近に表示） */
-    bottom: calc(60px + env(safe-area-inset-bottom));
+    bottom: calc(36px + env(safe-area-inset-bottom));
     display:flex;
     align-items:center;
     justify-content:center;
@@ -1363,16 +1363,19 @@
   /* =========================
      ★Scene picker (5 cards) overlay
      ========================= */
-  .scene-picker-backdrop{
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,.35);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:720;
-    padding:16px;
-  }
+.scene-picker-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.35);
+  display:none;
+  align-items:flex-end; /* ★中央→下寄せ */
+  justify-content:center;
+  z-index:720;
+
+  /* ★下に下げる：safe-area + 法医学者ドック分だけ余白を確保 */
+  padding:16px 16px calc(16px + var(--forensicDockH, 0px) + env(safe-area-inset-bottom));
+}
+
   .scene-picker-backdrop.show{ display:flex; }
 
   /* ★要件：Scene一覧の「テーブル/背景」が白ではなく、黒っぽく透過 */
@@ -1388,13 +1391,63 @@
   .scene-grid{
     display:grid;
     gap:10px;
-    grid-template-columns: repeat(3, 65px);
+    grid-template-columns: repeat(5, 65px); /* ★ 1 row of 5 */
     justify-content:center;
   }
-  .scene-grid .scene-option{
-    width:65px;
-    height:140px;
+
+/* =========================
+   ★Scene一覧：5枚目のカードに HARD タイル（カード外の上）
+   - HARDタイルは薄くしない（カードの薄さは overlay で表現）
+   ========================= */
+
+/* 5枚目カードの上に HARD タイル（カード外） */
+.scene-grid .scene-option:last-child::before{
+  content:"HARD";
+  position:absolute;
+  left:50%;
+  top:-26px;              /* ★カード外の上へ */
+  transform:translateX(-50%);
+  padding:4px 10px;
+  border-radius:999px;
+  background:rgba(220,38,38,.95);
+  border:1px solid rgba(255,255,255,.35);
+  color:#fff;
+  font-weight:900;
+  font-size:12px;
+  letter-spacing:.06em;
+  line-height:1;
+  white-space:nowrap;     /* ★省略しない */
+  z-index:6;
+  box-shadow:0 10px 22px rgba(0,0,0,.35);
+
+  opacity:1;              /* ★薄くしない */
+  filter:none;            /* ★薄くしない */
+}
+
+/* 5枚目カードが未選択のとき「薄く見せる」：opacityではなく overlay で */
+.scene-grid .scene-option:last-child:not(.selected){
+  filter: grayscale(.35) brightness(.78) saturate(.75); /* ←薄さを強める */
+}
+
+.scene-grid .scene-option:last-child:not(.selected)::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:rgba(0,0,0,.55); /* ← .35 → .55 にして、もっと薄く */
+  pointer-events:none;
+  z-index:5;
+}
+
+
+
+  .scene-option.selected{
+    outline:3px solid rgba(255,255,255,.85);
+    outline-offset: 2px;
+    opacity:1;          /* ★force full visibility when selected */
+    filter:none;
   }
+
   .scene-grid-wrap{
     display:flex;
     flex-direction:column;
@@ -1609,7 +1662,7 @@
 <div id="scenePickerBackdrop" class="scene-picker-backdrop" aria-hidden="true">
   <div class="scene-picker" role="dialog" aria-modal="true" aria-label="Scene 選択">
     <div class="scene-grid-wrap">
-      <div id="sceneHint" class="scene-hint">Scene</div>
+      <div id="sceneHint" class="scene-hint">現場カード</div>
       <div id="sceneGrid" class="scene-grid"></div>
     </div>
   </div>
@@ -3475,11 +3528,7 @@ function renderScenePickerGrid(){
   const viewerIsForensic = state.isForensicViewer;
   const allowPick = viewerIsForensic && canSelectNow;
 
-  if (!viewerIsForensic){
-    sceneHint.textContent = 'Scene（閲覧のみ）';
-  } else {
-    sceneHint.textContent = canSelectNow ? 'Scene（選択）' : 'Scene（閲覧のみ）';
-  }
+
 
   SCENE_SETS.forEach((def, idx) => {
     const card = makeClueCardStaticViewEl({
