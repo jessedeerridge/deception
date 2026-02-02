@@ -1220,6 +1220,69 @@
     100%{ transform:translate3d(20px,280px,0) rotate(12deg); opacity:0; }
   }
 
+  /* =========================
+     ★Final incorrect reveal (Murderer card)
+     ========================= */
+  .final-reveal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:760;
+  }
+  .final-reveal-overlay.show{ display:flex; }
+  .final-reveal-inner{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .final-reveal-card{
+    width:200px;
+    height:300px;
+    border-radius:16px;
+    background:#fff;
+    border:4px solid rgba(122,58,34,.95);
+    box-shadow:0 24px 70px rgba(0,0,0,.55);
+    position:relative;
+    overflow:hidden;
+    transform-origin:center;
+  }
+  .final-reveal-card img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .final-reveal-label{
+    position:absolute;
+    bottom:10px;
+    right:10px;
+    padding:6px 10px;
+    border-radius:10px;
+    background:rgba(0,0,0,.78);
+    color:#fff;
+    font-weight:900;
+    font-size:14px;
+    letter-spacing:.06em;
+    box-shadow:0 6px 16px rgba(0,0,0,.35);
+  }
+  .final-reveal-card.animate{
+    animation: murdererShake .75s ease-in-out;
+  }
+  @keyframes murdererShake{
+    0%{ transform:scale(1.06) rotate(0deg); }
+    20%{ transform:scale(1.06) rotate(-2deg); }
+    40%{ transform:scale(1.06) rotate(2deg); }
+    60%{ transform:scale(1.06) rotate(-1.6deg); }
+    80%{ transform:scale(1.06) rotate(1.6deg); }
+    100%{ transform:scale(1) rotate(0deg); }
+  }
+
   .replace-backdrop{
     position:fixed; inset:0;
     background:rgba(0,0,0,.35);
@@ -1447,6 +1510,10 @@
     opacity:1;          /* ★force full visibility when selected */
     filter:none;
   }
+  .scene-option.dimmed{
+    opacity:.4;
+    filter: grayscale(.55) brightness(.7) saturate(.75);
+  }
 
   .scene-grid-wrap{
     display:flex;
@@ -1638,6 +1705,15 @@
   </div>
 </div>
 
+<div id="finalRevealOverlay" class="final-reveal-overlay" aria-hidden="true">
+  <div class="final-reveal-inner">
+    <div id="finalRevealCard" class="final-reveal-card">
+      <img id="finalRevealImg" src="" alt="" loading="eager">
+      <div class="final-reveal-label">殺人犯</div>
+    </div>
+  </div>
+</div>
+
 <div id="answeringPop" class="answering-pop" aria-hidden="true">
   <div class="answering-pop-inner">
     <div id="answeringPopMessage" class="answering-pop-message">（プレイヤー名）が回答中...</div>
@@ -1725,6 +1801,7 @@ const ROLE_DEFS = [
 ];
 const MURDER_SIDE_ROLES = new Set(['殺人犯', '共犯者', '狡猾な共犯者']);
 const WITNESS_REVEAL_DURATION_MS = 2300;
+const FINAL_INCORRECT_REVEAL_DURATION_MS = 900;
 
 /* =========================
    Scene Sets (5 options)
@@ -1787,6 +1864,8 @@ const state = {
   _lastWitnessPickKey: null,
   _revealTimer: null,
   _witnessOverlayTimer: null,
+  _lastFinalRevealKey: null,
+  _finalRevealTimer: null,
   specialPhase: null,
   specialPoliceChecks: {},
   _specialPhaseFinalizing: false,
@@ -1918,6 +1997,9 @@ const witnessRevealOverlay = document.getElementById('witnessRevealOverlay');
 const witnessRevealName = document.getElementById('witnessRevealName');
 const witnessRevealCard = document.getElementById('witnessRevealCard');
 const witnessRevealImg = document.getElementById('witnessRevealImg');
+const finalRevealOverlay = document.getElementById('finalRevealOverlay');
+const finalRevealCard = document.getElementById('finalRevealCard');
+const finalRevealImg = document.getElementById('finalRevealImg');
 
 /* Scene picker DOM */
 const scenePickerBackdrop = document.getElementById('scenePickerBackdrop');
@@ -1993,6 +2075,81 @@ function fitNameTag(tagEl, lines){
     }
     tagEl.style.fontSize = `${minPx}px`;
   });
+}
+
+function openSeatStealPopup(player){
+  if (!player || state.seatedTable !== null) return;
+  pendingSeatIndexToSteal = Number.isFinite(player.seatIndex) ? player.seatIndex : null;
+  pendingSeatPlayerIdToSteal = player.id || null;
+  kickMessage.textContent = `「${player.name || '名無し'}」の席に座りますか？`;
+  kickDialog.classList.remove('hidden');
+}
+function attachSeatStealToNameTag(tagEl, player){
+  if (!tagEl) return;
+  tagEl.addEventListener('click', (e) => {
+    if (state.seatedTable !== null) return;
+    e.stopPropagation();
+    e.preventDefault();
+    openSeatStealPopup(player);
+  }, true);
+}
+
+async function transferSeatState(oldPlayerId, newPlayerId){
+  if (!state.roomCode) return;
+  if (!oldPlayerId || !newPlayerId) return;
+  if (oldPlayerId === newPlayerId) return;
+
+  const updates = {};
+
+  if (state.deal?.[oldPlayerId]){
+    updates[`deal/${newPlayerId}`] = state.deal[oldPlayerId];
+    updates[`deal/${oldPlayerId}`] = null;
+  }
+
+  if (state.answerUsed?.[oldPlayerId]){
+    updates[`answerUsed/${newPlayerId}`] = true;
+    updates[`answerUsed/${oldPlayerId}`] = null;
+  }
+
+  if (state.lawyerReveal?.playerId === oldPlayerId){
+    updates['lawyerReveal/playerId'] = newPlayerId;
+  }
+
+  if (state.answering?.playerId === oldPlayerId){
+    updates['answering/playerId'] = newPlayerId;
+    updates['answering/playerName'] = state.userName || '名無し';
+  }
+
+  if (state.witnessPick?.targetId === oldPlayerId){
+    updates['witnessPick/targetId'] = newPlayerId;
+    updates['witnessPick/targetName'] = state.userName || '名無し';
+  }
+
+  if (state.specialPhase?.insiderTargetId === oldPlayerId){
+    updates['specialPhase/insiderTargetId'] = newPlayerId;
+    updates['specialPhase/insiderTargetName'] = state.userName || '名無し';
+  }
+
+  if (state.specialPoliceChecks && Object.keys(state.specialPoliceChecks).length){
+    const nextChecks = {};
+    let touched = false;
+    for (const [key, val] of Object.entries(state.specialPoliceChecks)){
+      if (val?.ownerId === oldPlayerId){
+        const nextVal = { ...val, ownerId: newPlayerId };
+        const nextKey = getSpecialPoliceCardKey(newPlayerId, val.kind, val.idx);
+        nextChecks[nextKey] = nextVal;
+        touched = true;
+      } else {
+        nextChecks[key] = val;
+      }
+    }
+    if (touched){
+      updates['specialPoliceChecks'] = nextChecks;
+    }
+  }
+
+  if (!Object.keys(updates).length) return;
+  await update(ref(db, `rooms/${state.roomCode}`), updates).catch(()=>{});
 }
 
 /* clue-item 自動縮小 */
@@ -2385,13 +2542,12 @@ function updateAnswerResolutionUI(){
     clearTimeout(state._revealTimer);
     state._revealTimer = null;
   }
-  if (status === 'witness_reveal'){
+  if (status === 'witness_reveal' || status === 'last_incorrect'){
     const revealAt = Number(state.answerResult?.revealAt || 0);
-    if (revealAt){
-      const delay = Math.max(0, revealAt - Date.now());
+    if (revealAt && revealAt > Date.now()){
+      const delay = revealAt - Date.now();
       state._revealTimer = setTimeout(() => {
-        renderPlayersVertical(latestPlayers);
-        updateViewToggleVisibility();
+        updateAnswerResolutionUI();
       }, delay + 30);
     }
   }
@@ -2432,6 +2588,39 @@ function playWitnessReveal(){
     witnessRevealOverlay.classList.remove('show');
     witnessRevealOverlay.setAttribute('aria-hidden', 'true');
   }, WITNESS_REVEAL_DURATION_MS + 200);
+}
+
+function playFinalIncorrectReveal(){
+  const result = state.answerResult;
+  if (!result || result.status !== 'last_incorrect') return;
+  if (getViewerRoleName() === '法医学者') return;
+
+  const revealAt = Number(result.revealAt || 0);
+  if (revealAt && Date.now() > revealAt + 300){
+    return;
+  }
+
+  const key = `${result.at || 0}`;
+  if (state._lastFinalRevealKey === key) return;
+  state._lastFinalRevealKey = key;
+
+  finalRevealImg.src = '殺人犯.jpg';
+  finalRevealImg.alt = '殺人犯';
+
+  finalRevealCard.classList.remove('animate');
+  void finalRevealCard.offsetWidth;
+  finalRevealCard.classList.add('animate');
+
+  finalRevealOverlay.classList.add('show');
+  finalRevealOverlay.setAttribute('aria-hidden', 'false');
+
+  if (state._finalRevealTimer){
+    clearTimeout(state._finalRevealTimer);
+  }
+  state._finalRevealTimer = setTimeout(() => {
+    finalRevealOverlay.classList.remove('show');
+    finalRevealOverlay.setAttribute('aria-hidden', 'true');
+  }, FINAL_INCORRECT_REVEAL_DURATION_MS + 200);
 }
 
 async function submitAnswerRequest(){
@@ -2525,6 +2714,14 @@ async function resolveAnswer(isCorrect){
       by: state.userId
     };
     updates.witnessPick = null;
+  } else if (areAllAnswerChipsUsed()){
+    const revealAt = Date.now() + FINAL_INCORRECT_REVEAL_DURATION_MS;
+    updates.answerResult = {
+      status: 'last_incorrect',
+      at: Date.now(),
+      revealAt,
+      by: state.userId
+    };
   }
   await update(roomRef, updates).catch(()=>{});
 }
@@ -2820,6 +3017,11 @@ function subscribeAnswerResult(){
   onValue(rRef, snap => {
     state.answerResult = snap.val() || null;
     updateAnswerResolutionUI();
+    playFinalIncorrectReveal();
+    if (!state.answerResult || state.answerResult.status !== 'last_incorrect'){
+      finalRevealOverlay.classList.remove('show');
+      finalRevealOverlay.setAttribute('aria-hidden', 'true');
+    }
   });
 }
 function subscribeLawyerReveal(){
@@ -2872,6 +3074,7 @@ function handleRoomResetLocal(resetAt){
   state.witnessPick = null;
   state.forceSingleColumn = false;
   state._lastWitnessPickKey = null;
+  state._lastFinalRevealKey = null;
   state.specialPhase = null;
   state.specialPoliceChecks = {};
   state._specialPhaseFinalizing = false;
@@ -2883,6 +3086,10 @@ function handleRoomResetLocal(resetAt){
     clearTimeout(state._witnessOverlayTimer);
     state._witnessOverlayTimer = null;
   }
+  if (state._finalRevealTimer){
+    clearTimeout(state._finalRevealTimer);
+    state._finalRevealTimer = null;
+  }
 
   witnessSelectingPop.classList.remove('show');
   witnessSelectingPop.setAttribute('aria-hidden', 'true');
@@ -2890,6 +3097,8 @@ function handleRoomResetLocal(resetAt){
   witnessMurdererPop.setAttribute('aria-hidden', 'true');
   witnessRevealOverlay.classList.remove('show');
   witnessRevealOverlay.setAttribute('aria-hidden', 'true');
+  finalRevealOverlay.classList.remove('show');
+  finalRevealOverlay.setAttribute('aria-hidden', 'true');
 
   updateSpecialPhaseUI();
   renderPlayersVertical(latestPlayers);
@@ -3092,19 +3301,31 @@ function hasSpecialPoliceRole(){
 function shouldTriggerSpecialPhase(){
   return hasInsiderRole() || hasSpecialPoliceRole();
 }
+function areAllAnswerChipsUsed(){
+  if (!latestPlayers || !latestPlayers.length) return false;
+  const forensicId = findPlayerIdByRole("法医学者");
+  return latestPlayers
+    .filter(p => p.id !== forensicId)
+    .every(p => isAnswerUsed(p.id));
+}
 function getAnswerStatus(){
   return state.answerResult?.status || null;
 }
 function shouldForceSingleColumn(){
   const status = getAnswerStatus();
-  return status === 'revealed' || status === 'witness_select' || status === 'witness_reveal';
+  const revealAt = Number(state.answerResult?.revealAt || 0);
+  const finalReady = status === 'last_incorrect' && revealAt && Date.now() >= revealAt;
+  return status === 'revealed' || status === 'witness_select' || status === 'witness_reveal' || finalReady;
 }
 function shouldShowSelectionsForAll(){
   return shouldForceSingleColumn();
 }
 function shouldRevealAllRoles(){
   const status = getAnswerStatus();
+  const revealAt = Number(state.answerResult?.revealAt || 0);
+  const finalReady = status === 'last_incorrect' && revealAt && Date.now() >= revealAt;
   if (status === 'revealed') return true;
+  if (finalReady) return true;
   if (status === 'witness_reveal'){
     const revealAt = Number(state.answerResult?.revealAt || 0);
     return !!(revealAt && Date.now() >= revealAt);
@@ -3540,6 +3761,7 @@ function renderScenePickerGrid(){
     card.classList.add('scene-option');
 
     if (selectedIdx === idx) card.classList.add('selected');
+    if (selectedIdx === 4 && idx < 4) card.classList.add('dimmed');
 
     if (allowPick){
       card.classList.add('clickable');
@@ -4599,7 +4821,7 @@ function makeRoleCardFace(roleName){
   role.appendChild(cn);
   return role;
 }
-function makeRoleWrap(playerId, playerName, isMe, showFace, roleName, roleNamesToShow = null){
+function makeRoleWrap(playerId, playerName, isMe, showFace, roleName, roleNamesToShow = null, seatIndex = null){
   const wrap = document.createElement('div');
   wrap.className = 'role-wrap';
   const canLawyerReveal = canTriggerLawyerReveal(playerId, roleName, isMe);
@@ -4610,6 +4832,7 @@ function makeRoleWrap(playerId, playerName, isMe, showFace, roleName, roleNamesT
   const nameTag = document.createElement('div');
   nameTag.className = 'role-name-tag' + (isMe ? ' me' : '');
   nameTag.textContent = playerName || '名無し';
+  attachSeatStealToNameTag(nameTag, { id: playerId, name: playerName || '名無し', seatIndex });
   if (canLawyerReveal){
     nameTag.classList.add('lawyer-reveal-trigger');
     nameTag.addEventListener('click', (e) => {
@@ -4836,14 +5059,15 @@ function applySelectionClassesToCard(cardEl, {viewerPrivileged, ownerId, kind, i
 }
 
 function applySpecialPoliceCardState(cardEl, {ownerId, kind, idxInRow}){
-  if (getViewerRoleName() !== '検査技師') return;
+  const viewerRole = getViewerRoleName();
+  if (viewerRole !== '検査技師' && viewerRole !== '法医学者') return;
   const check = getSpecialPoliceCheck(ownerId, kind, idxInRow);
   if (check){
     const mark = document.createElement('div');
     mark.className = `special-police-mark ${check.isHit ? 'hit' : 'miss'}`;
     cardEl.appendChild(mark);
   }
-  if (canSpecialPoliceInspectCard(ownerId, kind, idxInRow)){
+  if (viewerRole === '検査技師' && canSpecialPoliceInspectCard(ownerId, kind, idxInRow)){
     cardEl.classList.add('special-police-target');
     cardEl.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -4968,6 +5192,7 @@ function buildPlayerBlock(p, isForensic){
   const badge = document.createElement('div');
   badge.className = 'player-badge' + (isMe ? ' me' : '');
   badge.textContent = p.name || '名無し';
+  attachSeatStealToNameTag(badge, { id: p.id, name: p.name || '名無し', seatIndex: p.seatIndex });
   if (canLawyerReveal){
     badge.classList.add('lawyer-reveal-trigger');
     badge.addEventListener('click', (e) => {
@@ -5024,7 +5249,7 @@ function buildPlayerBlock(p, isForensic){
   block.appendChild(badgeGroup);
 
   if (!isForensic){
-    const roleWrap = makeRoleWrap(p.id, p.name, isMe, showFace, roleName, revealRoleNames);
+    const roleWrap = makeRoleWrap(p.id, p.name, isMe, showFace, roleName, revealRoleNames, p.seatIndex);
     const canPickWitness = isWitnessSelectionActive() && getViewerRoleName() === '殺人犯';
     const isCandidate = canPickWitness && isWitnessCandidateRole(roleName);
     if (isCandidate && !state.witnessPick){
@@ -5371,6 +5596,7 @@ btnGameStart.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${state.roomCode}/selections`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/forensicPick`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/forensicClues`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/forensicDiscarded`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/sceneSelection`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/answerUsed`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/answering`)).catch(()=>{});
@@ -5389,10 +5615,25 @@ btnKickNo.addEventListener('click', () => {
   kickDialog.classList.add('hidden');
 });
 btnKickYes.addEventListener('click', async () => {
-  // not used in this template
+  if (!state.roomCode || !state.userId) return;
+  if (!Number.isFinite(pendingSeatIndexToSteal)) return;
+
+  const seatIndex = pendingSeatIndexToSteal;
+  const seatPlayerId = pendingSeatPlayerIdToSteal;
   pendingSeatIndexToSteal = null;
   pendingSeatPlayerIdToSteal = null;
   kickDialog.classList.add('hidden');
+
+  if (seatPlayerId){
+    await transferSeatState(seatPlayerId, state.userId);
+  }
+
+  const tRef = ref(db, `rooms/${state.roomCode}/tables/${seatIndex}`);
+  await set(tRef, { playerId: state.userId, playerName: state.userName || '名無し' }).catch(()=>{});
+
+  state.seatedTable = seatIndex;
+  setWatchMode(false);
+  seatPop.classList.add('hidden');
 });
 
 /* Replace confirm close by Esc */
