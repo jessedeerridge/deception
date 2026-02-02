@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ディセプション</title>
 <style>
-  html, body{height:100%; overflow:hidden;}
+  html, body{min-height:100%; overflow-x:hidden; overflow-y:auto;}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
 
   /* ★スクロールバーを非表示（スクロールは可能） */
@@ -28,7 +28,9 @@
 
   main{
     position:relative;
-    height:calc(100vh - 60px);
+    min-height:calc(100vh - 60px);
+    min-height:calc(100dvh - 60px);
+    height:auto;
     overflow:visible;
     background-size:cover;
     background-position:center;
@@ -662,7 +664,10 @@
 
   .row4{
     display:flex;
-    gap: calc(2px * var(--uiScale));
+    --card-gap: calc(2px * var(--uiScale));
+    --cards-per-row: var(--row4-cards-per-row, 6);
+    --card-width: calc((100% - (var(--cards-per-row) - 1) * var(--card-gap)) / var(--cards-per-row));
+    gap: var(--card-gap);
     flex-wrap:nowrap;
     overflow-x:auto;
     overflow-y:visible;
@@ -689,6 +694,10 @@
     flex:0 0 auto;
     transform-origin:center center;
     will-change:transform;
+  }
+  .row4 .card{
+    width: var(--card-width);
+    height: calc(var(--card-width) * 1.5);
   }
   .card .card-inner{
     position:absolute;
@@ -2024,7 +2033,10 @@ function splitManualLines(name){
   return [name];
 }
 function setNameTagLines(tagEl, name){
-  const lines = splitManualLines(name).slice(0, 2);
+  const forceSingleLine = tagEl?.dataset?.singleLine === '1';
+  const lines = forceSingleLine
+    ? [name.replaceAll('N\\', '').replaceAll('\n', '')]
+    : splitManualLines(name).slice(0, 2);
   tagEl.innerHTML = '';
   for (const line of lines){
     const s = document.createElement('span');
@@ -4061,29 +4073,36 @@ document.addEventListener('keydown', (e) => {
 
 /* 2列スケール */
 function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
-function computeAndApplyTwoColScale(){
-  if (!document.body.classList.contains('two-col')){
+function computeAndApplyCardScale(){
+  const isTwoCol = document.body.classList.contains('two-col');
+  const sampleRow = playersColumn.querySelector('.player-block .two-rows .row4');
+  if (!sampleRow){
     playersColumn.style.setProperty('--uiScale', '1');
     return;
   }
 
-  let scale = 0.82;
-  const sampleRow = playersColumn.querySelector('.player-block .two-rows .row4');
-  if (sampleRow){
-    const avail = sampleRow.clientWidth;
-    const baseCards = 60 * 4;
-    const baseGaps  = 8  * 3;
-    const baseTotal = baseCards + baseGaps;
-    const needScale = avail / baseTotal;
-    scale = clamp(needScale, 0.52, 0.82);
-  }
+  let maxCards = 0;
+  playersColumn.querySelectorAll('.player-block .two-rows .row4').forEach((row) => {
+    const count = row.querySelectorAll('.card').length;
+    if (count > maxCards) maxCards = count;
+  });
+  const targetCards = isTwoCol ? Math.max(4, maxCards) : Math.max(6, maxCards);
+
+  const cs = getComputedStyle(sampleRow);
+  const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+  const avail = Math.max(0, sampleRow.clientWidth - pad);
+  const baseCardW = 60;
+  const baseGap = 2;
+  const baseTotal = baseCardW * targetCards + baseGap * (targetCards - 1);
+  const needScale = avail > 0 ? avail / baseTotal : 1;
+  const scale = isTwoCol ? clamp(needScale, 0.52, 0.82) : clamp(needScale, 0.45, 1);
 
   playersColumn.style.setProperty('--uiScale', String(scale));
+  playersColumn.style.setProperty('--row4-cards-per-row', String(targetCards));
   requestAnimationFrame(() => {
     document.querySelectorAll('.name-tag').forEach(tagEl => {
       const name = tagEl.getAttribute('data-name') || '';
-      const lines = splitManualLines(name).slice(0,2);
-      setNameTagLines(tagEl, name);
+      const lines = setNameTagLines(tagEl, name);
       fitNameTag(tagEl, lines);
     });
   });
@@ -4094,7 +4113,7 @@ function setTwoColMode(on){
   document.body.classList.toggle('two-col', !!on);
   localStorage.setItem('bbTwoCol', on ? '1' : '0');
   renderPlayersVertical(latestPlayers);
-  requestAnimationFrame(() => computeAndApplyTwoColScale());
+  requestAnimationFrame(() => computeAndApplyCardScale());
 }
 (function initTwoCol(){
   const saved = localStorage.getItem('bbTwoCol') === '1';
@@ -4106,7 +4125,7 @@ viewToggleBtn.addEventListener('click', () => {
   setTwoColMode(on);
 });
 window.addEventListener('resize', () => {
-  computeAndApplyTwoColScale();
+  computeAndApplyCardScale();
   const clueRow = document.querySelector('.forensic-container .clue-row');
   if (clueRow) updateDchipOverlapInRow(clueRow);
   updateBottomControlsPosition();
@@ -4770,6 +4789,7 @@ function makeCardEl(kind, name){
   const tag = document.createElement('div');
   tag.className = 'name-tag';
   tag.setAttribute('data-name', name);
+  tag.dataset.singleLine = '1';
 
   const lines = setNameTagLines(tag, name);
 
@@ -4798,6 +4818,7 @@ function makeMarkerCard(kind, imageName, altText, labelText){
     const tag = document.createElement('div');
     tag.className = 'name-tag';
     tag.setAttribute('data-name', labelText);
+    tag.dataset.singleLine = '1';
     const lines = setNameTagLines(tag, labelText);
     inner.appendChild(tag);
     fitNameTag(tag, lines);
@@ -5124,7 +5145,7 @@ function renderPlayersVertical(players){
   }
 
   requestAnimationFrame(() => {
-    computeAndApplyTwoColScale();
+    computeAndApplyCardScale();
     applyReplacePreviewToDOM();
     updateBottomControlsPosition();   // ★ここで確定（ドックの有無/高さ反映）
   });
