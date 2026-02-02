@@ -5059,14 +5059,15 @@ function applySelectionClassesToCard(cardEl, {viewerPrivileged, ownerId, kind, i
 }
 
 function applySpecialPoliceCardState(cardEl, {ownerId, kind, idxInRow}){
-  if (getViewerRoleName() !== '検査技師') return;
+  const viewerRole = getViewerRoleName();
+  if (viewerRole !== '検査技師' && viewerRole !== '法医学者') return;
   const check = getSpecialPoliceCheck(ownerId, kind, idxInRow);
   if (check){
     const mark = document.createElement('div');
     mark.className = `special-police-mark ${check.isHit ? 'hit' : 'miss'}`;
     cardEl.appendChild(mark);
   }
-  if (canSpecialPoliceInspectCard(ownerId, kind, idxInRow)){
+  if (viewerRole === '検査技師' && canSpecialPoliceInspectCard(ownerId, kind, idxInRow)){
     cardEl.classList.add('special-police-target');
     cardEl.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -5595,6 +5596,7 @@ btnGameStart.addEventListener('click', async () => {
   await remove(ref(db, `rooms/${state.roomCode}/selections`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/forensicPick`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/forensicClues`)).catch(()=>{});
+  await remove(ref(db, `rooms/${state.roomCode}/forensicDiscarded`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/sceneSelection`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/answerUsed`)).catch(()=>{});
   await remove(ref(db, `rooms/${state.roomCode}/answering`)).catch(()=>{});
