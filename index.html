@@ -322,7 +322,7 @@
 
   .seat-pop{
     position:fixed;left:50%;bottom:10px;transform:translateX(-50%);
-    background:orange;border:1px solid #eee;border-radius:12px;
+    background:brown;border:1px solid #eee;border-radius:12px;
     box-shadow:0 12px 28px rgba(0,0,0,.12);
     padding:10px;z-index:220;display:flex;flex-direction:column;gap:10px;min-width:280px;
   }
@@ -1646,10 +1646,10 @@
 
 <!-- ★Answer Chip confirm pop -->
 <div id="answerConfirmPop" class="answer-confirm-pop hidden" role="dialog" aria-modal="true" aria-label="Answer confirm">
-  <div class="answer-confirm-text">Do you want to answer?</div>
+  <div class="answer-confirm-text">回答しますか。</div>
   <div class="answer-confirm-actions">
-    <button id="btnAnswerYes" class="btn primary">Yes</button>
-    <button id="btnAnswerNo" class="btn ghost">No</button>
+    <button id="btnAnswerYes" class="btn primary">はい</button>
+    <button id="btnAnswerNo" class="btn ghost">いいえ</button>
   </div>
 </div>
 <div id="lawyerRevealPop" class="lawyer-reveal-pop hidden" role="dialog" aria-modal="true" aria-label="Lawyer reveal confirm">
@@ -1737,7 +1737,7 @@
 <div id="helpBackdrop" class="help-pop-backdrop hidden" aria-hidden="true">
   <div class="help-pop" role="dialog" aria-modal="true" aria-label="正体カード一覧">
     <div class="help-pop-head">
-      <div class="help-pop-title">Identity Cards</div>
+      <div class="help-pop-title">正体カード</div>
       <button id="btnHelpClose" class="help-pop-close" aria-label="閉じる">×</button>
     </div>
     <div class="help-pop-body" id="helpBody"></div>
@@ -1805,9 +1805,9 @@ const ROLE_DEFS = [
   { key:'witness',          name:'目撃者',             text:"殺人犯と共犯者がわかるが、どちらがどちらかまでは分からない。\n自分の正体が殺人犯にバレると、捜査官陣営の負け。" },
   { key:'bodyguard',        name:'ボディガード',       text:"目撃者が誰か知っている。" },
 
-  { key:'special_police',   name:'検査技師',           text:"" },
-  { key:'lawyer',           name:'顧問探偵',           text:"回答バッジを失う代わりに、正体を明かすことができる。※正体を透かした時点で回答バッジは失い、回答後に透かすことは禁止。" },
-  { key:'insider',          name:'内通者',     text:"ラウンドの終わりにこっそり選んだプレイヤーの回答バッジを失わせる。" },
+  { key:'special_police',   name:'検査技師',           text:"各ラウンドの終わりに、こっそり選んだ1枚のカードが正しいかどうか知ることができる。全部で2回。" },
+  { key:'lawyer',           name:'顧問探偵',           text:"回答バッジを失う代わりに、正体を明かすことができる。※正体を透かした時点で回答バッジは失うことと、回答後に透かすことは禁止。" },
+  { key:'insider',          name:'内通者',     text:"各ラウンドの終わりに、こっそり選んだプレイヤーの回答バッジを失わせる。全部で2回。" },
 ];
 const MURDER_SIDE_ROLES = new Set(['殺人犯', '共犯者', '狡猾な共犯者']);
 const WITNESS_REVEAL_DURATION_MS = 2300;
