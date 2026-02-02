@@ -3303,7 +3303,10 @@ function shouldTriggerSpecialPhase(){
 }
 function areAllAnswerChipsUsed(){
   if (!latestPlayers || !latestPlayers.length) return false;
-  return latestPlayers.every(p => isAnswerUsed(p.id));
+  const forensicId = findPlayerIdByRole("法医学者");
+  return latestPlayers
+    .filter(p => p.id !== forensicId)
+    .every(p => isAnswerUsed(p.id));
 }
 function getAnswerStatus(){
   return state.answerResult?.status || null;
