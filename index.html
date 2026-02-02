@@ -7,7 +7,15 @@
 <title>ディセプション</title>
 <style>
   html, body{height:100%; overflow:hidden;}
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:#fff;
+    color:#111;
+    min-height:100vh;
+    min-height:100svh;
+    min-height:100dvh;
+  }
 
   /* ★スクロールバーを非表示（スクロールは可能） */
   *{ scrollbar-width: none; }
@@ -29,6 +37,8 @@
   main{
     position:relative;
     height:calc(100vh - 60px);
+    height:calc(100svh - 60px);
+    height:calc(100dvh - 60px);
     overflow:visible;
     background-size:cover;
     background-position:center;
