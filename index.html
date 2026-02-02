@@ -2094,6 +2094,64 @@ function attachSeatStealToNameTag(tagEl, player){
   }, true);
 }
 
+async function transferSeatState(oldPlayerId, newPlayerId){
+  if (!state.roomCode) return;
+  if (!oldPlayerId || !newPlayerId) return;
+  if (oldPlayerId === newPlayerId) return;
+
+  const updates = {};
+
+  if (state.deal?.[oldPlayerId]){
+    updates[`deal/${newPlayerId}`] = state.deal[oldPlayerId];
+    updates[`deal/${oldPlayerId}`] = null;
+  }
+
+  if (state.answerUsed?.[oldPlayerId]){
+    updates[`answerUsed/${newPlayerId}`] = true;
+    updates[`answerUsed/${oldPlayerId}`] = null;
+  }
+
+  if (state.lawyerReveal?.playerId === oldPlayerId){
+    updates['lawyerReveal/playerId'] = newPlayerId;
+  }
+
+  if (state.answering?.playerId === oldPlayerId){
+    updates['answering/playerId'] = newPlayerId;
+    updates['answering/playerName'] = state.userName || '名無し';
+  }
+
+  if (state.witnessPick?.targetId === oldPlayerId){
+    updates['witnessPick/targetId'] = newPlayerId;
+    updates['witnessPick/targetName'] = state.userName || '名無し';
+  }
+
+  if (state.specialPhase?.insiderTargetId === oldPlayerId){
+    updates['specialPhase/insiderTargetId'] = newPlayerId;
+    updates['specialPhase/insiderTargetName'] = state.userName || '名無し';
+  }
+
+  if (state.specialPoliceChecks && Object.keys(state.specialPoliceChecks).length){
+    const nextChecks = {};
+    let touched = false;
+    for (const [key, val] of Object.entries(state.specialPoliceChecks)){
+      if (val?.ownerId === oldPlayerId){
+        const nextVal = { ...val, ownerId: newPlayerId };
+        const nextKey = getSpecialPoliceCardKey(newPlayerId, val.kind, val.idx);
+        nextChecks[nextKey] = nextVal;
+        touched = true;
+      } else {
+        nextChecks[key] = val;
+      }
+    }
+    if (touched){
+      updates['specialPoliceChecks'] = nextChecks;
+    }
+  }
+
+  if (!Object.keys(updates).length) return;
+  await update(ref(db, `rooms/${state.roomCode}`), updates).catch(()=>{});
+}
+
 /* clue-item 自動縮小 */
 function fitClueItemTextRow(itemEl){
   const textEl = itemEl.querySelector('.clue-item-text');
@@ -5556,9 +5614,14 @@ btnKickYes.addEventListener('click', async () => {
   if (!Number.isFinite(pendingSeatIndexToSteal)) return;
 
   const seatIndex = pendingSeatIndexToSteal;
+  const seatPlayerId = pendingSeatPlayerIdToSteal;
   pendingSeatIndexToSteal = null;
   pendingSeatPlayerIdToSteal = null;
   kickDialog.classList.add('hidden');
+
+  if (seatPlayerId){
+    await transferSeatState(seatPlayerId, state.userId);
+  }
 
   const tRef = ref(db, `rooms/${state.roomCode}/tables/${seatIndex}`);
   await set(tRef, { playerId: state.userId, playerName: state.userName || '名無し' }).catch(()=>{});
