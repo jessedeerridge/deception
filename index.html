@@ -5552,10 +5552,20 @@ btnKickNo.addEventListener('click', () => {
   kickDialog.classList.add('hidden');
 });
 btnKickYes.addEventListener('click', async () => {
-  // not used in this template
+  if (!state.roomCode || !state.userId) return;
+  if (!Number.isFinite(pendingSeatIndexToSteal)) return;
+
+  const seatIndex = pendingSeatIndexToSteal;
   pendingSeatIndexToSteal = null;
   pendingSeatPlayerIdToSteal = null;
   kickDialog.classList.add('hidden');
+
+  const tRef = ref(db, `rooms/${state.roomCode}/tables/${seatIndex}`);
+  await set(tRef, { playerId: state.userId, playerName: state.userName || '名無し' }).catch(()=>{});
+
+  state.seatedTable = seatIndex;
+  setWatchMode(false);
+  seatPop.classList.add('hidden');
 });
 
 /* Replace confirm close by Esc */
